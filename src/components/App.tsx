@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import FunnelChart from "./FunnelChart";
+import OrgChart from "./OrgChart";
 import {
   STAGES, TASKS, AGENTS, ROLES, COVERAGE, EXPERIMENTS, STACK, FUNNEL_ZONES,
   STATUS_OPTIONS, AGENT_STATUS_OPTIONS, KPI_FIELDS,
@@ -10,15 +11,36 @@ import {
   type Client, type KpiRow, type StageId, type TaskStatus, type AgentStatusValue,
 } from "@/lib/data";
 
-type View = "pipeline" | "mapa" | "playbook" | "agentes" | "metricas" | "equipo";
+type View = "pipeline" | "organigrama" | "mapa" | "playbook" | "agentes" | "metricas" | "equipo";
 
 function fmt(v: number | null | undefined) {
   return v == null ? "—" : v.toLocaleString("es-AR");
 }
 
+const STORAGE_KEY = "browth:v1";
+
+function loadPersisted<T>(fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+    const all = JSON.parse(raw);
+    return all ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function App() {
-  const [clients, setClients] = useState<Client[]>(SEED_CLIENTS);
-  const [selectedClientId, setSelectedClientId] = useState<string>(SEED_CLIENTS[0].id);
+  const persisted = useMemo(() => loadPersisted<{
+    clients?: Client[];
+    taskStatusByClient?: Record<string, Record<string, TaskStatus>>;
+    agentStatusByClient?: Record<string, Record<string, { status: AgentStatusValue; autonomy: number; resp: number }>>;
+    kpisByClient?: Record<string, KpiRow[]>;
+  }>({}), []);
+
+  const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
+  const [selectedClientId, setSelectedClientId] = useState<string>((persisted.clients?.length ? persisted.clients : SEED_CLIENTS)[0].id);
   const [view, setView] = useState<View>("pipeline");
   const [openZone, setOpenZone] = useState<string | null>(null);
   const [playbookFilter, setPlaybookFilter] = useState<StageId | null>(null);
@@ -26,14 +48,22 @@ export default function App() {
   const [kpiMetric, setKpiMetric] = useState<string>("revenue");
 
   const [taskStatusByClient, setTaskStatusByClient] = useState<Record<string, Record<string, TaskStatus>>>(
-    () => Object.fromEntries(Object.entries(SEED_TASK_STATUS))
+    () => persisted.taskStatusByClient ?? Object.fromEntries(Object.entries(SEED_TASK_STATUS))
   );
   const [agentStatusByClient, setAgentStatusByClient] = useState(
-    () => Object.fromEntries(Object.entries(SEED_AGENT_STATUS))
+    () => persisted.agentStatusByClient ?? Object.fromEntries(Object.entries(SEED_AGENT_STATUS))
   );
   const [kpisByClient, setKpisByClient] = useState<Record<string, KpiRow[]>>(
-    () => Object.fromEntries(Object.entries(SEED_KPIS))
+    () => persisted.kpisByClient ?? Object.fromEntries(Object.entries(SEED_KPIS))
   );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, agentStatusByClient, kpisByClient }));
+    } catch {
+      // localStorage no disponible (modo privado, cuota llena) — la app sigue funcionando en memoria.
+    }
+  }, [clients, taskStatusByClient, agentStatusByClient, kpisByClient]);
 
   const client = clients.find((c) => c.id === selectedClientId)!;
   const taskStatus = taskStatusByClient[selectedClientId] || {};
@@ -118,6 +148,7 @@ export default function App() {
             onJumpToAgent={(stage) => { setView("agentes"); setAgentFilter(stage); }}
           />
         )}
+        {view === "organigrama" && <OrgChart />}
         {view === "mapa" && <Mapa taskCompletion={taskCompletion} />}
         {view === "playbook" && (
           <Playbook
@@ -162,6 +193,7 @@ function Sidebar({
   const [showModal, setShowModal] = useState(false);
   const navItems: { id: View; label: string }[] = [
     { id: "pipeline", label: "Pipeline" },
+    { id: "organigrama", label: "Organigrama" },
     { id: "mapa", label: "Mapa del embudo" },
     { id: "playbook", label: "Playbook" },
     { id: "agentes", label: "Agentes IA" },
@@ -532,40 +564,149 @@ function Agentes({
         <FilterPill active={filter === null} onClick={() => setFilter(null)}>Todos</FilterPill>
         {STAGES.map((s) => <FilterPill key={s.id} active={filter === s.id} color={s.color} onClick={() => setFilter(s.id)}>{s.name}</FilterPill>)}
       </div>
-      {list.map((a) => {
-        const s = stageOf(a.stage);
-        const cur = agentStatus[a.id] || { status: "No construido" as AgentStatusValue, autonomy: 0, resp: 0 };
-        return (
-          <div key={a.id} id={`agent-${a.id}`} className="border border-border rounded-lg p-4 mb-2.5 bg-panel-raised">
-            <div className="flex justify-between items-start gap-2.5 mb-2.5">
-              <h3 className="text-base m-0 normal-case tracking-normal font-display font-bold">{a.name}</h3>
-              <span className="text-[9.5px] uppercase tracking-wide font-display font-extrabold px-1.5 py-0.5 rounded" style={{ background: `${s.color}22`, color: s.color }}>{s.name}</span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-2.5">
-              <Field k="Se activa cuando" v={a.trigger} />
-              <Field k="Trabaja con" v={a.input} />
-              <Field k="Entrega" v={a.output} />
-              <Field k="Límites" v={a.guardrails} />
-              <Field k="API / integración" v={a.api} />
-            </div>
-            <div className="flex gap-2.5 flex-wrap items-center pt-2.5 border-t border-border">
-              <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Estado
-                <select value={cur.status} onChange={(e) => setAgentField(a.id, "status", e.target.value)} className="border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1 text-[11.5px]">
-                  {AGENT_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </label>
-              <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Autonomía %
-                <input type="number" min={0} max={100} value={cur.autonomy} onChange={(e) => setAgentField(a.id, "autonomy", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1" />
-              </label>
-              <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Resp. (min)
-                <input type="number" min={0} value={cur.resp} onChange={(e) => setAgentField(a.id, "resp", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1" />
-              </label>
-              <span className="text-[10.5px] text-ink-soft ml-auto">Construye: <span className="px-1.5 py-0.5 rounded-md bg-panel border border-border">{a.builder}</span></span>
-            </div>
-          </div>
-        );
-      })}
+      {list.map((a) => (
+        <AgentCard key={a.id} agent={a} cur={agentStatus[a.id]} setAgentField={setAgentField} />
+      ))}
     </>
+  );
+}
+
+function AgentCard({
+  agent: a, cur, setAgentField,
+}: {
+  agent: (typeof AGENTS)[number];
+  cur?: { status: AgentStatusValue; autonomy: number; resp: number };
+  setAgentField: (id: string, field: "status" | "autonomy" | "resp", v: string | number) => void;
+}) {
+  const s = stageOf(a.stage);
+  const status = cur || { status: "No construido" as AgentStatusValue, autonomy: 0, resp: 0 };
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div id={`agent-${a.id}`} className="border border-border rounded-lg p-4 mb-2.5 bg-panel-raised">
+      <div className="flex justify-between items-start gap-2.5 mb-2.5">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base m-0 normal-case tracking-normal font-display font-bold">{a.name}</h3>
+          {a.live ? (
+            <span className="flex items-center gap-1 text-[9px] font-display font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded-full text-good border border-good/40">
+              <span className="w-1.5 h-1.5 rounded-full bg-good" style={{ boxShadow: "0 0 6px var(--good)" }} /> Vivo
+            </span>
+          ) : (
+            <span className="text-[9px] font-display font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded-full text-ink-faint border border-border-strong">
+              Entrenado
+            </span>
+          )}
+        </div>
+        <span className="text-[9.5px] uppercase tracking-wide font-display font-extrabold px-1.5 py-0.5 rounded" style={{ background: `${s.color}22`, color: s.color }}>{s.name}</span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-2.5">
+        <Field k="Se activa cuando" v={a.trigger} />
+        <Field k="Trabaja con" v={a.input} />
+        <Field k="Entrega" v={a.output} />
+        <Field k="Límites" v={a.guardrails} />
+        <Field k="API / integración" v={a.api} />
+      </div>
+      <div className="flex gap-2.5 flex-wrap items-center pt-2.5 border-t border-border">
+        <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Estado
+          <select value={status.status} onChange={(e) => setAgentField(a.id, "status", e.target.value)} className="border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1 text-[11.5px]">
+            {AGENT_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+          </select>
+        </label>
+        <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Autonomía %
+          <input type="number" min={0} max={100} value={status.autonomy} onChange={(e) => setAgentField(a.id, "autonomy", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1" />
+        </label>
+        <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Resp. (min)
+          <input type="number" min={0} value={status.resp} onChange={(e) => setAgentField(a.id, "resp", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1" />
+        </label>
+        <span className="text-[10.5px] text-ink-soft ml-auto">Construye: <span className="px-1.5 py-0.5 rounded-md bg-panel border border-border">{a.builder}</span></span>
+      </div>
+
+      <div className="pt-2.5 mt-2.5 border-t border-border">
+        <button onClick={() => setShowPrompt((v) => !v)} className="text-[10.5px] font-display font-extrabold uppercase tracking-wide text-accent">
+          {showPrompt ? "Ocultar" : "Ver"} system prompt {showPrompt ? "▲" : "▼"}
+        </button>
+        {showPrompt && (
+          <div className="mt-2 relative">
+            <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-ink-soft bg-panel border border-border rounded-md p-3 max-h-64 overflow-y-auto font-sans">{a.systemPrompt}</pre>
+            <button
+              onClick={() => { navigator.clipboard?.writeText(a.systemPrompt); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+              className="absolute top-2 right-2 text-[9.5px] font-display font-extrabold uppercase px-2 py-1 rounded-md bg-panel-raised-2 border border-border-strong text-ink-soft"
+            >
+              {copied ? "Copiado ✓" : "Copiar"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {a.live && <InboundQualifierConsole />}
+    </div>
+  );
+}
+
+function InboundQualifierConsole() {
+  const [message, setMessage] = useState("Hola! vi un reel suyo, cuanto sale armar algo como lo de ustedes para mi marca de ropa?");
+  const [leadName, setLeadName] = useState("Lucía (IG)");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ reply: string; qualified: boolean | string; reason: string; nextStep: string; flags: string[] } | null>(null);
+
+  async function run() {
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const res = await fetch("/api/agents/inbound-qualifier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, leadName, channel: "Instagram" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error del agente");
+      setResult(data.result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="pt-3 mt-3 border-t border-border">
+      <div className="text-[10.5px] font-display font-extrabold uppercase tracking-wide text-good mb-2">Probar agente en vivo</div>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_auto] gap-2 mb-2">
+        <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Mensaje entrante del lead…" className="border border-border-strong rounded-md bg-panel text-ink px-2.5 py-1.5 text-xs" />
+        <input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Nombre del lead" className="border border-border-strong rounded-md bg-panel text-ink px-2.5 py-1.5 text-xs" />
+        <button onClick={run} disabled={loading} className="bg-good text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2 rounded-md disabled:opacity-50">
+          {loading ? "Calificando…" : "Enviar"}
+        </button>
+      </div>
+      {error && (
+        <div className="text-[11.5px] text-critical bg-critical/10 border border-critical/30 rounded-md p-2.5">
+          {error}
+        </div>
+      )}
+      {result && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[12px]">
+          <div className="border border-border rounded-md p-2.5 bg-panel">
+            <div className="text-[9.5px] uppercase tracking-wide text-ink-faint mb-1">Respuesta de Brodita</div>
+            <div className="text-ink-soft">{result.reply}</div>
+          </div>
+          <div className="border border-border rounded-md p-2.5 bg-panel">
+            <div className="text-[9.5px] uppercase tracking-wide text-ink-faint mb-1">Veredicto</div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className={`w-2 h-2 rounded-full ${result.qualified === true ? "bg-good" : result.qualified === false ? "bg-critical" : "bg-warn"}`} />
+              <span className="font-semibold">{String(result.qualified)}</span>
+            </div>
+            <div className="text-ink-faint text-[11px] mb-1">{result.reason}</div>
+            <div className="text-[10.5px]">Próximo paso: <b>{result.nextStep}</b></div>
+            {result.flags?.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {result.flags.map((f, i) => <span key={i} className="text-[9.5px] px-1.5 py-0.5 rounded bg-warn/15 text-warn">{f}</span>)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
