@@ -117,6 +117,7 @@ export interface MiembroEquipo {
   rol: string;
   tareas: string;
   nucleo: boolean;
+  vacante?: boolean;
 }
 
 export const EQUIPO_BRODA: MiembroEquipo[] = [
@@ -125,10 +126,22 @@ export const EQUIPO_BRODA: MiembroEquipo[] = [
   { persona: "Thiago", rol: "Mercado", tareas: "Pauta por cuenta. Pipeline actualizado. Propuestas enviadas. Cierra el primer acuerdo variable.", nucleo: true },
   { persona: "Mecha", rol: "Líder de Marca", tareas: "Calendario del mes cerrado el día 25. Piezas dentro del SLA. Nada fuera del sistema visual.", nucleo: false },
   { persona: "Juan", rol: "Líder Audiovisual", tareas: "Media jornada por cuenta. Entregas dentro del SLA. Una supervisión de Liz por semana.", nucleo: false },
+  { persona: "Creativo", rol: "Contenido", tareas: "A contratar. Ejecuta y publica según calendario. Responde mensajes. Reporta lo que no llegó.", nucleo: false, vacante: true },
+  { persona: "Editor", rol: "Editor de Juan", tareas: "Edita las entregas audiovisuales. Dentro del acuerdo con Juan.", nucleo: false },
   { persona: "Liz", rol: "Segunda editora", tareas: "En construcción bajo Juan. Por entrega.", nucleo: false },
   { persona: "Fabi", rol: "Editor de BRODA", tareas: "Solo marca propia.", nucleo: false },
   { persona: "Marce", rol: "Growth Partner", tareas: "Trae clientes. No entrega. Comisión por cierre.", nucleo: false },
 ];
+
+/** Cómo se ordena el equipo: núcleo decide qué, células deciden cómo, red trae o apoya desde afuera. */
+export const ESTRUCTURA = {
+  nucleo: ["Charly", "Tomi", "Thiago"],
+  celulas: [
+    { nombre: "Célula de marca", lider: "Mecha", equipo: ["Creativo"] },
+    { nombre: "Célula audiovisual", lider: "Juan", equipo: ["Editor", "Liz"] },
+  ],
+  red: ["Marce", "Fabi"],
+};
 
 export const ROLES_TABLA = {
   encabezados: ["Quién", "Posee", "Responde por"],
@@ -300,6 +313,7 @@ export const ESTRATEGIA = {
 export interface PiezaPlan {
   id: string;
   prioridad: boolean;
+  /** "" = pieza sin fecha, vive en la bandeja lateral hasta que se arrastra a un día. */
   fecha: string;
   canal: "ig" | "li" | "yt";
   canalLabel: string;
@@ -308,7 +322,39 @@ export interface PiezaPlan {
   pilar: string;
   estado: string;
   detalle: string;
+  // Diseño (placa, carrusel, post)
+  titular?: string;
+  subtitulo?: string;
+  composicion?: string;
+  // Video (reel, video largo)
+  hook?: string;
+  tension?: string;
+  transformacion?: string;
+  cta?: string;
 }
+
+export const FORMATOS: { formato: string; tipo: "video" | "diseno" }[] = [
+  { formato: "Reel", tipo: "video" },
+  { formato: "Video largo", tipo: "video" },
+  { formato: "Placa", tipo: "diseno" },
+  { formato: "Carrusel", tipo: "diseno" },
+  { formato: "Post", tipo: "diseno" },
+];
+
+export function tipoDePieza(formato: string): "video" | "diseno" {
+  return FORMATOS.find((f) => f.formato === formato)?.tipo ?? "diseno";
+}
+
+export const CANALES: { canal: PiezaPlan["canal"]; label: string }[] = [
+  { canal: "ig", label: "Instagram" },
+  { canal: "li", label: "LinkedIn" },
+  { canal: "yt", label: "YouTube" },
+];
+
+export const ESTADOS_PIEZA = [
+  "Bloque abierto", "Espera guion", "Espera redacción", "Espera material",
+  "En producción", "Espera corte de edición", "Listo para publicar", "Publicado",
+];
 
 export const PLAN = {
   bajada: "Prioridad primero: lo que ya está grabado o diseñado sale antes que lo nuevo.",
@@ -344,9 +390,10 @@ export const PLAN = {
       detalle: "Solo se escribe si hay un resultado con número, fecha y fuente confirmados. Si no está listo para esta fecha, se corre." },
     { id: "p13", prioridad: false, fecha: "2026-10-09", canal: "ig", canalLabel: "Instagram", formato: "Reel", tema: "Contenido nuevo — a definir", pilar: "Sin asignar", estado: "Bloque abierto",
       detalle: "Todavía no tiene tema asignado." },
+    { id: "r1", prioridad: false, fecha: "", canal: "ig", canalLabel: "Instagram", formato: "Placa", tema: "“Mutar es Broda” (collage de equipo)", pilar: "Documental · Nutrición (MOFU)", estado: "Listo para publicar",
+      detalle: "Ya diseñada, sin fecha asignada." },
+    { id: "r2", prioridad: false, fecha: "", canal: "ig", canalLabel: "Instagram", formato: "Placa", tema: "“Ser reconocible es más que ser visible”", pilar: "Criterio · Awareness (TOFU)", estado: "Listo para publicar",
+      detalle: "Ya diseñada, sin fecha asignada." },
   ] as PiezaPlan[],
-  reservas: [
-    "“Mutar es Broda” (collage de equipo) — ya diseñada, sin fecha asignada",
-    "“Ser reconocible es más que ser visible” — ya diseñada, sin fecha asignada",
-  ],
+  reservas: [] as string[],
 };

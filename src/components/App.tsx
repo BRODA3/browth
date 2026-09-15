@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import FunnelChart from "./FunnelChart";
 import OrgChart from "./OrgChart";
+import TeamOrgChart from "./TeamOrgChart";
 import InfraFunnel from "./InfraFunnel";
 import NorthStar from "./NorthStar";
 import BusinessCase from "./BusinessCase";
@@ -187,15 +188,20 @@ function AppInner() {
           )}
           {view === "equipo" && (
             <>
-              <OrgChart />
-              <div className="mt-4">
-                <EquipoBroda />
+              <div className="mb-6">
+                <h2 className="text-[clamp(26px,3.4vw,40px)] leading-[1.02] mb-2">Equipo</h2>
+                <p className="text-ink-soft text-[14.5px] max-w-[62ch]">Quién decide, quién ejecuta y cómo se ordena la semana.</p>
               </div>
+              <TeamOrgChart />
+              <EquipoBroda />
             </>
           )}
           {view === "playbooks" && <Mapa taskCompletion={taskCompletion} />}
           {view === "agentes" && (
-            <Agentes filter={agentFilter} setFilter={setAgentFilter} agentStatus={agentStatus} setAgentField={setAgentField} />
+            <>
+              <div className="mb-4"><OrgChart /></div>
+              <Agentes filter={agentFilter} setFilter={setAgentFilter} agentStatus={agentStatus} setAgentField={setAgentField} />
+            </>
           )}
           {view === "metricas" && (
             <Metricas
@@ -228,23 +234,10 @@ function NavHeader({ view }: { view: View }) {
 function EquipoBroda() {
   const { data } = useBroda();
   return (
-    <div className="pt-10 mt-6 border-t border-border">
-      <h2 className="text-[clamp(26px,3.4vw,40px)] leading-[1.02] mb-3">El equipo real</h2>
-      <p className="text-ink-soft text-[15px] leading-relaxed max-w-[66ch] mb-8">El núcleo decide qué se hace y para quién. Las células deciden cómo. Si a un socio le llega una pregunta de cómo, la devuelve.</p>
-      <table className="w-full border-collapse">
-        <thead><tr><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border pr-6">Persona</th><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border pr-6">Rol</th><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border">Tareas fijas</th></tr></thead>
-        <tbody>
-          {data.EQUIPO_BRODA.map((m, i) => (
-            <tr key={i}>
-              <td className={`py-3 border-b border-border text-[14px] font-semibold pr-6 align-top ${m.nucleo ? "text-accent" : "text-ink"}`}><Editable path={["EQUIPO_BRODA", i, "persona"]} value={m.persona} /></td>
-              <td className="py-3 border-b border-border text-[14px] text-ink-soft pr-6 align-top"><Editable path={["EQUIPO_BRODA", i, "rol"]} value={m.rol} /></td>
-              <td className="py-3 border-b border-border text-[13.5px] text-ink-faint align-top"><Editable path={["EQUIPO_BRODA", i, "tareas"]} value={m.tareas} multiline /></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="mt-10 pt-8 border-t border-border">
-        <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-4">BRODAWEEK</div>
+    <div className="mt-4 bg-surface border border-border rounded-[var(--r-lg)] p-6">
+      <div>
+        <h2 className="text-[17px] leading-tight m-0 normal-case tracking-tight font-display font-extrabold">BRODAWEEK</h2>
+        <p className="text-[12.5px] text-ink-faint mt-1 mb-3">Tres reuniones, tres trabajos distintos. Un informe no necesita reunión.</p>
         <div className="flex flex-col">
           {data.BRODAWEEK.filas.map((f, i) => (
             <div key={i} className={`flex flex-col md:flex-row md:items-baseline gap-1 md:gap-6 py-3.5 ${i < data.BRODAWEEK.filas.length - 1 ? "border-b border-border" : ""}`}>
