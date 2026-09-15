@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Section, Nota, Editable } from "./doc";
 import { useBroda } from "./BrodaContext";
 import type { LineaNegocio } from "@/lib/broda";
@@ -13,47 +14,53 @@ const ESTADO_STYLE: Record<LineaNegocio["estado"], string> = {
 export default function NorthStar() {
   const { data } = useBroda();
   const { LINEAS, LINEAS_TABLA, LINEAS_NOTA } = data;
+  const [open, setOpen] = useState<number | null>(0);
 
   return (
     <div>
-      <div className="pb-10 border-b border-border">
-        <div className="font-display font-black uppercase text-[clamp(48px,8vw,120px)] leading-[0.85] tracking-tight">
-          BRODA<span className="text-accent">WORLD</span>
+      <Section
+        title="Los cinco modelos de negocio"
+        subtitle="Cada uno depende de que el anterior esté funcionando. No son cinco proyectos en paralelo: son cinco escalones. Tocá cualquiera para ver qué lo desbloquea y por qué todavía no."
+        first
+      >
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-5">
+          {LINEAS.map((l, i) => (
+            <button
+              key={i}
+              onClick={() => setOpen(open === i ? null : i)}
+              className={`rounded-full aspect-square flex flex-col items-center justify-center text-center p-5 transition-transform hover:-translate-y-1 ${ESTADO_STYLE[l.estado]} ${open === i ? "ring-2 ring-offset-2 ring-offset-bg ring-accent" : ""}`}
+            >
+              <div className="font-display font-black text-[16px] md:text-[19px] leading-tight">{l.nombre}</div>
+              <div className={`text-[11px] md:text-[12px] leading-snug mt-2.5 ${l.estado === "activa" ? "opacity-75" : "text-ink-faint"}`}>{l.desc}</div>
+              <div className={`text-[9px] font-display font-extrabold uppercase tracking-wide mt-3 ${l.estado === "activa" ? "opacity-60" : "opacity-70"}`}>{open === i ? "▲ Cerrar" : "▼ Ver más"}</div>
+            </button>
+          ))}
         </div>
-      </div>
 
-      <Section title="Las cuatro líneas" subtitle="Cada una depende de que la anterior esté funcionando. No son cuatro proyectos en paralelo: son cuatro escalones.">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {LINEAS.map((l, i) => (
-            <div key={i} className={`rounded-full aspect-square flex flex-col items-center justify-center text-center p-4 ${ESTADO_STYLE[l.estado]}`}>
-              <div className="font-display font-black text-[13px] md:text-[15px] leading-tight"><Editable path={["LINEAS", i, "nombre"]} value={l.nombre} /></div>
-              <div className={`text-[10px] md:text-[10.5px] leading-snug mt-2 ${l.estado === "activa" ? "opacity-75" : "text-ink-faint"}`}><Editable path={["LINEAS", i, "desc"]} value={l.desc} multiline /></div>
+        {open != null && (
+          <div className="mt-8 pt-8 border-t border-border">
+            <div className="flex items-baseline gap-3 mb-4 flex-wrap">
+              <h3 className="text-2xl m-0 normal-case tracking-normal" style={{ color: LINEAS[open].estado === "activa" ? "var(--accent)" : "var(--ink)" }}>
+                <Editable path={["LINEAS", open, "nombre"]} value={LINEAS[open].nombre} />
+              </h3>
+              <span className="text-[12px] text-ink-faint">
+                <Editable path={["LINEAS", open, "etiqueta"]} value={LINEAS[open].etiqueta} />
+              </span>
             </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-5">
-          {LINEAS.map((l, i) => (
-            <span key={i} className={`text-[12px] font-semibold ${l.estado === "activa" ? "text-accent" : "text-ink-faint"}`}>
-              {l.nombre}: <Editable path={["LINEAS", i, "etiqueta"]} value={l.etiqueta} />
-            </span>
-          ))}
-        </div>
-        <div className="mt-10 overflow-x-auto">
-          <table className="w-full border-collapse min-w-[560px]">
-            <thead><tr>{LINEAS_TABLA.encabezados.map((h) => <th key={h} className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border pr-6">{h}</th>)}</tr></thead>
-            <tbody>
-              {LINEAS_TABLA.filas.map((f, i) => (
-                <tr key={i}>
-                  {f.map((c, j) => (
-                    <td key={j} className={`py-3 pr-6 border-b border-border text-[14px] align-top last:pr-0 ${j === 0 ? "font-display font-extrabold text-accent" : "text-ink-soft"}`}>
-                      <Editable path={["LINEAS_TABLA", "filas", i, j]} value={c} multiline={j > 0} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            <p className="text-ink-soft text-[14px] mb-5 max-w-[66ch]"><Editable path={["LINEAS", open, "desc"]} value={LINEAS[open].desc} multiline /></p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Qué la desbloquea</div>
+                <p className="text-[13.5px] text-ink-soft"><Editable path={["LINEAS_TABLA", "filas", open, 1]} value={LINEAS_TABLA.filas[open][1]} multiline /></p>
+              </div>
+              <div>
+                <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Por qué todavía no</div>
+                <p className="text-[13.5px] text-ink-soft"><Editable path={["LINEAS_TABLA", "filas", open, 2]} value={LINEAS_TABLA.filas[open][2]} multiline /></p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Nota titulo={LINEAS_NOTA.titulo} texto={LINEAS_NOTA.texto} path={["LINEAS_NOTA"]} />
       </Section>
     </div>

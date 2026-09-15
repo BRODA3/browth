@@ -33,7 +33,7 @@ export function ModeSwitch({ mode, onSetMode }: { mode: Mode; onSetMode: (m: Mod
       <div className="flex items-center gap-2 shrink-0">
         <div className="w-7 h-7 rounded-lg bg-accent text-accent-ink flex items-center justify-center font-display font-black text-[13px]">B</div>
         <div className="font-display font-black text-[16px] uppercase tracking-tight">
-          BR<span className="text-accent">O</span>WTH
+          BRODA<span className="text-accent">WORLD</span>
         </div>
       </div>
       <div className="flex items-center gap-1 bg-panel-raised border border-border-strong rounded-full p-1">
@@ -59,10 +59,7 @@ export function ModeSwitch({ mode, onSetMode }: { mode: Mode; onSetMode: (m: Mod
           <span>✎</span> {editMode ? "Editando" : "Editar"}
         </button>
       )}
-      <div className="ml-auto flex items-center gap-2 text-[10px] text-ink-faint">
-        <div className="w-6 h-6 rounded-md bg-accent flex items-center justify-center font-display font-black text-accent-ink text-[11px]">B</div>
-        Brodita
-      </div>
+      <div className="ml-auto" />
     </div>
   );
 }

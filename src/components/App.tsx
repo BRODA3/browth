@@ -9,6 +9,7 @@ import BusinessCase from "./BusinessCase";
 import EstrategiaContenido from "./EstrategiaContenido";
 import PlanContenido from "./PlanContenido";
 import { ModeSwitch, SideNav, type Mode, type View } from "./Nav";
+import BroditaChat from "./BroditaChat";
 import { BrodaProvider, useBroda } from "./BrodaContext";
 import { Editable } from "./doc";
 import {
@@ -205,6 +206,7 @@ function AppInner() {
           )}
         </main>
       </div>
+      <BroditaChat mode={mode} client={client} />
     </div>
   );
 }
