@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import FunnelChart from "./FunnelChart";
 import OrgChart from "./OrgChart";
+import InfraFunnel from "./InfraFunnel";
+import NorthStar from "./NorthStar";
+import BusinessCase from "./BusinessCase";
+import TopNav, { type View } from "./TopNav";
+import { EQUIPO_BRODA, BRODAWEEK } from "@/lib/broda";
 import {
   STAGES, TASKS, AGENTS, ROLES, COVERAGE, EXPERIMENTS, STACK, FUNNEL_ZONES,
   STATUS_OPTIONS, AGENT_STATUS_OPTIONS, KPI_FIELDS,
@@ -11,7 +16,7 @@ import {
   type Client, type KpiRow, type StageId, type TaskStatus, type AgentStatusValue,
 } from "@/lib/data";
 
-type View = "pipeline" | "organigrama" | "mapa" | "playbook" | "agentes" | "metricas" | "equipo";
+const CLIENT_SCOPED = new Set<View>(["pipeline", "agentes", "metricas"]);
 
 function fmt(v: number | null | undefined) {
   return v == null ? "—" : v.toLocaleString("es-AR");
@@ -41,7 +46,7 @@ export default function App() {
 
   const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
   const [selectedClientId, setSelectedClientId] = useState<string>((persisted.clients?.length ? persisted.clients : SEED_CLIENTS)[0].id);
-  const [view, setView] = useState<View>("pipeline");
+  const [view, setView] = useState<View>("northstar");
   const [openZone, setOpenZone] = useState<string | null>(null);
   const [playbookFilter, setPlaybookFilter] = useState<StageId | null>(null);
   const [agentFilter, setAgentFilter] = useState<StageId | null>(null);
@@ -114,104 +119,144 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskStatus]);
 
-  return (
-    <div className="min-h-screen grid grid-cols-[240px_1fr]">
-      <Sidebar
-        clients={clients}
-        selectedClientId={selectedClientId}
-        onSelectClient={(id) => { setSelectedClientId(id); setOpenZone(null); }}
-        onAddClient={addClient}
-        view={view}
-        onSetView={setView}
-      />
-      <main className="px-8 py-7 pb-16 max-w-[1180px]">
-        <div className="flex items-baseline justify-between flex-wrap gap-2.5 mb-6">
-          <div>
-            <h1 className="text-3xl m-0">{client.name}</h1>
-            <div className="text-ink-soft text-[13px]">{client.industry}</div>
-          </div>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-display text-[10px] font-extrabold uppercase tracking-wider border border-border-strong text-ink-soft">
-            {client.tier}
-          </span>
-        </div>
+  const scoped = CLIENT_SCOPED.has(view);
 
-        {view === "pipeline" && (
-          <Pipeline
-            zoneCompletions={zoneCompletions}
-            openZone={openZone}
-            setOpenZone={setOpenZone}
-            taskStatus={taskStatus}
-            setTaskStatus={setTaskStatus}
-            agentAdoptionByStage={agentAdoptionByStage}
-            taskCompletion={taskCompletion}
-            latest={latest}
-            onJumpToAgent={(stage) => { setView("agentes"); setAgentFilter(stage); }}
+  return (
+    <div className="min-h-screen">
+      <TopNav view={view} onSetView={setView} />
+      <div className={scoped ? "grid grid-cols-[240px_1fr]" : "grid grid-cols-1"}>
+        {scoped && (
+          <ClientRail
+            clients={clients}
+            selectedClientId={selectedClientId}
+            onSelectClient={(id) => { setSelectedClientId(id); setOpenZone(null); }}
+            onAddClient={addClient}
           />
         )}
-        {view === "organigrama" && <OrgChart />}
-        {view === "mapa" && <Mapa taskCompletion={taskCompletion} />}
-        {view === "playbook" && (
-          <Playbook
-            filter={playbookFilter}
-            setFilter={setPlaybookFilter}
-            taskStatus={taskStatus}
-            setTaskStatus={setTaskStatus}
-            onJumpToAgent={(stage) => { setView("agentes"); setAgentFilter(stage); }}
-          />
-        )}
-        {view === "agentes" && (
-          <Agentes filter={agentFilter} setFilter={setAgentFilter} agentStatus={agentStatus} setAgentField={setAgentField} />
-        )}
-        {view === "metricas" && (
-          <Metricas
-            kpis={kpis}
-            latest={latest}
-            prev={prev}
-            kpiMetric={kpiMetric}
-            setKpiMetric={setKpiMetric}
-            onAddPeriod={(row) => setKpisByClient((prevState) => ({
-              ...prevState,
-              [selectedClientId]: [...(prevState[selectedClientId] || []).filter((k) => k.period !== row.period), row].sort((a, b) => (a.period < b.period ? -1 : 1)),
-            }))}
-          />
-        )}
-        {view === "equipo" && <Equipo client={client} onUpdateOwners={(owners) => setClients((cs) => cs.map((c) => (c.id === client.id ? { ...c, owners } : c)))} />}
-      </main>
+        <main className={`px-8 pt-24 pb-16 ${scoped ? "max-w-[1180px]" : "max-w-[900px] mx-auto"}`}>
+          {scoped && (
+            <div className="flex items-baseline justify-between flex-wrap gap-2.5 mb-6">
+              <div>
+                <h1 className="text-3xl m-0">{client.name}</h1>
+                <div className="text-ink-soft text-[13px]">{client.industry}</div>
+              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-display text-[10px] font-extrabold uppercase tracking-wider border border-border-strong text-ink-soft">
+                {client.tier}
+              </span>
+            </div>
+          )}
+          {!scoped && <NavHeader view={view} />}
+
+          {view === "northstar" && <NorthStar />}
+          {view === "businesscase" && <BusinessCase />}
+          {view === "infra" && <InfraFunnel />}
+          {view === "pipeline" && (
+            <Pipeline
+              zoneCompletions={zoneCompletions}
+              openZone={openZone}
+              setOpenZone={setOpenZone}
+              taskStatus={taskStatus}
+              setTaskStatus={setTaskStatus}
+              agentAdoptionByStage={agentAdoptionByStage}
+              taskCompletion={taskCompletion}
+              latest={latest}
+              onJumpToAgent={(stage) => { setView("agentes"); setAgentFilter(stage); }}
+            />
+          )}
+          {view === "equipo" && (
+            <>
+              <OrgChart />
+              <div className="mt-4">
+                <EquipoBroda />
+              </div>
+            </>
+          )}
+          {view === "playbooks" && <Mapa taskCompletion={taskCompletion} />}
+          {view === "agentes" && (
+            <Agentes filter={agentFilter} setFilter={setAgentFilter} agentStatus={agentStatus} setAgentField={setAgentField} />
+          )}
+          {view === "metricas" && (
+            <Metricas
+              kpis={kpis}
+              latest={latest}
+              prev={prev}
+              kpiMetric={kpiMetric}
+              setKpiMetric={setKpiMetric}
+              onAddPeriod={(row) => setKpisByClient((prevState) => ({
+                ...prevState,
+                [selectedClientId]: [...(prevState[selectedClientId] || []).filter((k) => k.period !== row.period), row].sort((a, b) => (a.period < b.period ? -1 : 1)),
+              }))}
+            />
+          )}
+        </main>
+      </div>
     </div>
   );
 }
 
-/* ---------------- SIDEBAR ---------------- */
+const VIEW_TITLES: Record<View, string> = {
+  northstar: "North Star",
+  businesscase: "Business Case",
+  infra: "Infraestructura comercial",
+  pipeline: "Pipeline",
+  equipo: "Equipo",
+  playbooks: "Playbooks",
+  agentes: "Agentes IA",
+  metricas: "Métricas",
+};
 
-function Sidebar({
-  clients, selectedClientId, onSelectClient, onAddClient, view, onSetView,
+function NavHeader({ view }: { view: View }) {
+  return (
+    <div className="mb-6">
+      <h1 className="text-3xl m-0">{VIEW_TITLES[view]}</h1>
+    </div>
+  );
+}
+
+function EquipoBroda() {
+  return (
+    <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5">
+      <h2 className="text-xl m-0 mb-0.5">El equipo real</h2>
+      <p className="text-ink-soft text-[12.5px] mb-4 max-w-[70ch]">El núcleo decide qué se hace y para quién. Las células deciden cómo.</p>
+      <table className="w-full border-collapse">
+        <thead><tr><th className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border">Persona</th><th className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border pl-4">Rol</th><th className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border pl-4">Tareas fijas</th></tr></thead>
+        <tbody>
+          {EQUIPO_BRODA.map((m) => (
+            <tr key={m.persona}>
+              <td className={`py-2.5 border-b border-border text-[13px] font-semibold ${m.nucleo ? "text-accent" : "text-ink"}`}>{m.persona}</td>
+              <td className="py-2.5 border-b border-border text-[13px] text-ink-soft pl-4">{m.rol}</td>
+              <td className="py-2.5 border-b border-border text-[12.5px] text-ink-faint pl-4">{m.tareas}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mt-5 pt-4 border-t border-border">
+        <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">BRODAWEEK</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {BRODAWEEK.filas.map((f) => (
+            <div key={f[0]} className="border border-border rounded-lg p-3">
+              <div className="font-display font-bold text-sm">{f[0]} · {f[1]}</div>
+              <div className="text-[12px] text-ink-soft mt-1">{f[2]}</div>
+              <div className="text-[10.5px] text-ink-faint mt-1.5">{f[3]}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- CLIENT RAIL ---------------- */
+
+function ClientRail({
+  clients, selectedClientId, onSelectClient, onAddClient,
 }: {
   clients: Client[]; selectedClientId: string; onSelectClient: (id: string) => void;
   onAddClient: (name: string, tier: string, industry: string) => void;
-  view: View; onSetView: (v: View) => void;
 }) {
   const [showModal, setShowModal] = useState(false);
-  const navItems: { id: View; label: string }[] = [
-    { id: "pipeline", label: "Pipeline" },
-    { id: "organigrama", label: "Organigrama" },
-    { id: "mapa", label: "Mapa del embudo" },
-    { id: "playbook", label: "Playbook" },
-    { id: "agentes", label: "Agentes IA" },
-    { id: "metricas", label: "Métricas" },
-    { id: "equipo", label: "Equipo" },
-  ];
   return (
-    <nav className="bg-panel border-r border-border px-4 pt-5 pb-4 flex flex-col gap-4.5 h-screen sticky top-0 overflow-y-auto">
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-accent text-accent-ink flex items-center justify-center font-display font-black text-[17px] shrink-0">B</div>
-        <div className="leading-none">
-          <div className="font-display font-black text-[21px] uppercase tracking-tight">
-            BR<span className="text-accent">O</span>WTH
-          </div>
-          <div className="text-[9.5px] text-ink-faint uppercase tracking-wider mt-0.5">by Broda · Get·Convert·Keep·Grow</div>
-        </div>
-      </div>
-
+    <nav className="bg-panel border-r border-border px-4 pt-24 pb-4 flex flex-col gap-4.5 h-screen sticky top-0 overflow-y-auto">
       <div className="flex flex-col gap-1.5">
         <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint px-1.5">Cuentas</div>
         {clients.map((c) => (
@@ -232,22 +277,6 @@ function Sidebar({
         <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-dashed border-border-strong text-ink-faint text-xs hover:text-ink hover:border-accent">
           + Nueva cuenta
         </button>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint px-1.5">Consola</div>
-        {navItems.map((n) => (
-          <button
-            key={n.id}
-            onClick={() => onSetView(n.id)}
-            className={`flex items-center gap-2 px-2 py-2 rounded-md font-display font-bold text-[13px] uppercase w-full text-left ${
-              view === n.id ? "bg-accent text-accent-ink" : "text-ink-soft hover:text-ink hover:bg-panel-raised"
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-sm shrink-0 ${view === n.id ? "bg-accent-ink" : "bg-border-strong"}`} />
-            {n.label}
-          </button>
-        ))}
       </div>
 
       <div className="mt-auto flex flex-col gap-2">
