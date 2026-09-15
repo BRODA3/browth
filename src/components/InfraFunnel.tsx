@@ -3,164 +3,134 @@
 import { useState } from "react";
 import { Section, Nota, DocTable, Editable } from "./doc";
 import { useBroda } from "./BrodaContext";
-import { type EstadoCapa } from "@/lib/broda";
+import { type EstadoCapa, type CapaEmbudo } from "@/lib/broda";
 
-const CY = 120;
-const VIEW_W = 920;
-const VIEW_H = 240;
-const DEPTH = 9;
+// Embudo plano copiado del documento original de Broda: tres capas que se
+// angostan hasta el cuello (Convertir, en lima) y tres que se abren punteadas.
 
-const ZONE_X: Record<string, { x: [number, number]; h: [number, number] }> = {
-  atraer: { x: [30, 173.33], h: [100, 76] },
-  capturar: { x: [173.33, 316.67], h: [76, 52] },
-  calificar: { x: [316.67, 460], h: [52, 28] },
-  convertir: { x: [460, 560], h: [28, 28] },
-  retener: { x: [560, 670], h: [28, 52] },
-  expandir: { x: [670, 780], h: [52, 76] },
-  referir: { x: [780, 890], h: [76, 100] },
-};
+const LIMA = "#C8F542";
+const ESTADO_COLOR: Record<EstadoCapa, string> = { hecho: "#8a8a8a", foco: LIMA, falta: LIMA };
 
-const ESTADO_COLOR: Record<EstadoCapa, string> = { hecho: "#8a8a8a", foco: "#C8F542", falta: "#4a4a4a" };
+const X0 = 120, XN1 = 540, XN2 = 720, X1 = 1140;
+const YT = 110, YB = 510, NT = 250, NB = 370;
+const FILLS = ["#2f2f2f", "#3a3a3a", "#454545"];
 
-function zonePoints(x: [number, number], h: [number, number], dx = 0, dy = 0) {
-  const [x0, x1] = x;
-  const [h0, h1] = h;
-  return [
-    [x0 + dx, CY - h0 + dy],
-    [x1 + dx, CY - h1 + dy],
-    [x1 + dx, CY + h1 + dy],
-    [x0 + dx, CY + h0 + dy],
-  ].map((p) => p.join(",")).join(" ");
+const yTop = (x: number) => YT + ((x - X0) / (XN1 - X0)) * (NT - YT);
+const yBot = (x: number) => YB - ((x - X0) / (XN1 - X0)) * (YB - NB);
+const yTopD = (x: number) => NT - ((x - XN2) / (X1 - XN2)) * (NT - YT);
+const yBotD = (x: number) => NB + ((x - XN2) / (X1 - XN2)) * (YB - NB);
+
+const LABEL = { fontSize: 18, letterSpacing: "0.02em", fontWeight: 900, textTransform: "uppercase" as const };
+const TAG = { fontSize: 12.5, fontWeight: 600, fontFamily: "var(--font-inter)" };
+const ROL = { fontSize: 12, fontWeight: 700, fontFamily: "var(--font-inter)", fill: LIMA };
+const ZONA = { fontSize: 13, fontWeight: 700, fontFamily: "var(--font-inter)", fill: "#5c5c5c", letterSpacing: "0.08em" };
+
+function EmbudoSVG({ capas, meta, open, onPick }: {
+  capas: CapaEmbudo[];
+  meta: { entradas: string[]; zonaIzq: string; zonaDer: string; loop: string };
+  open: string | null;
+  onPick: (id: string) => void;
+}) {
+  const izq = capas.slice(0, 3), cuello = capas[3], der = capas.slice(4);
+  const wI = (XN1 - X0) / izq.length, wD = (X1 - XN2) / der.length;
+  const ncx = (XN1 + XN2) / 2;
+
+  const rol = (c: CapaEmbudo, cx: number) => (
+    <>
+      <text x={cx} y={548} textAnchor="middle" style={ROL}>{c.quien}</text>
+      {open === c.id && <rect x={cx - 22} y={558} width={44} height={2.5} fill={LIMA} />}
+    </>
+  );
+
+  return (
+    <svg viewBox="0 0 1200 660" className="w-full h-auto block" role="img" aria-label={`Embudo comercial: ${capas.map((c) => c.nombre).join(", ")}`}>
+      {meta.entradas.map((e, i) => (
+        <text key={e} x={12} y={86 + i * 32} style={{ ...TAG, fill: "#8d8d8d" }}>{e}</text>
+      ))}
+      <g stroke="#4a4a4a" strokeWidth={1.5} fill="none">
+        <path d="M78 80 L118 120" /><path d="M78 112 L118 132" />
+        <path d="M78 144 L118 148" /><path d="M78 176 L118 164" />
+      </g>
+
+      {izq.map((c, i) => {
+        const a = X0 + i * wI, b = X0 + (i + 1) * wI, cx = (a + b) / 2;
+        const dashed = c.estado === "falta";
+        return (
+          <g key={c.id} className="cursor-pointer hover:opacity-85" onClick={() => onPick(c.id)}>
+            <polygon
+              points={`${a},${yTop(a)} ${b},${yTop(b)} ${b},${yBot(b)} ${a},${yBot(a)}`}
+              fill={dashed ? "rgba(0,0,0,0)" : FILLS[i]} stroke={dashed ? LIMA : "#4a4a4a"}
+              strokeWidth={dashed ? 1.5 : 1} strokeDasharray={dashed ? "5 5" : undefined}
+            />
+            <text className="font-display" style={LABEL} fill={dashed ? LIMA : "#ffffff"} transform={`rotate(-90 ${cx} 310)`} x={cx} y={316} textAnchor="middle">{c.nombre}</text>
+            {rol(c, cx)}
+          </g>
+        );
+      })}
+
+      {cuello && (
+        <g className="cursor-pointer hover:opacity-90" onClick={() => onPick(cuello.id)}>
+          <rect x={XN1} y={NT} width={XN2 - XN1} height={NB - NT} fill={LIMA} />
+          <text className="font-display" style={LABEL} fill="#111111" x={ncx} y={303} textAnchor="middle">{cuello.nombre}</text>
+          {cuello.sub && <text x={ncx} y={326} textAnchor="middle" style={{ ...TAG, fill: "#111111" }}>{cuello.sub}</text>}
+          {rol(cuello, ncx)}
+        </g>
+      )}
+
+      {der.map((c, i) => {
+        const a = XN2 + i * wD, b = XN2 + (i + 1) * wD, cx = (a + b) / 2;
+        const dashed = c.estado === "falta";
+        return (
+          <g key={c.id} className="cursor-pointer hover:opacity-85" onClick={() => onPick(c.id)}>
+            <polygon
+              points={`${a},${yTopD(a)} ${b},${yTopD(b)} ${b},${yBotD(b)} ${a},${yBotD(a)}`}
+              fill={dashed ? "rgba(0,0,0,0)" : "#3a3a3a"} stroke={LIMA} strokeWidth={1.5}
+              strokeDasharray={dashed ? "5 5" : undefined}
+            />
+            <text className="font-display" style={LABEL} fill={LIMA} transform={`rotate(-90 ${cx} 310)`} x={cx} y={316} textAnchor="middle">{c.nombre}</text>
+            {rol(c, cx)}
+          </g>
+        );
+      })}
+
+      <path d="M1120 578 C 950 640, 380 640, 175 583" fill="none" stroke={LIMA} strokeWidth={1.5} strokeDasharray="4 6" />
+      <polygon points="175,583 190,588 186,574" fill={LIMA} />
+      <text x={640} y={634} textAnchor="middle" style={{ ...TAG, fill: "#8d8d8d" }}>{meta.loop}</text>
+      <text x={(X0 + XN1) / 2} y={46} textAnchor="middle" style={ZONA}>{meta.zonaIzq}</text>
+      <line x1={X0} y1={58} x2={XN1} y2={58} stroke="#3a3a3a" />
+      <text x={(XN2 + X1) / 2} y={46} textAnchor="middle" style={ZONA}>{meta.zonaDer}</text>
+      <line x1={XN2} y1={58} x2={X1} y2={58} stroke="#3a3a3a" />
+    </svg>
+  );
 }
 
 export default function InfraFunnel() {
   const { data } = useBroda();
   const { CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION } = data;
   const [open, setOpen] = useState<string | null>("convertir");
-  const [hovered, setHovered] = useState<string | null>(null);
-  const activeId = hovered ?? open;
-  const activeIdx = activeId ? CAPAS.findIndex((c) => c.id === activeId) : -1;
+  const activeIdx = open ? CAPAS.findIndex((c) => c.id === open) : -1;
   const activeCapa = activeIdx >= 0 ? CAPAS[activeIdx] : null;
-
-  const scene = (
-    <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H + DEPTH}`} className="w-full h-auto block" role="img" aria-label="Infraestructura comercial de Broda: las 7 capas">
-      <defs>
-        <filter id="infraGlow" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="7" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-        <filter id="infraShadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" /></filter>
-        <pattern id="infraGrid" width="24" height="24" patternUnits="userSpaceOnUse">
-          <path d="M24 0 L0 0 0 24" fill="none" stroke="rgba(255,255,255,0.035)" strokeWidth="1" />
-        </pattern>
-        <marker id="infraLoopArrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-          <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)" />
-        </marker>
-      </defs>
-      <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="url(#infraGrid)" />
-
-      <text x="245" y="14" textAnchor="middle" className="font-display fill-ink-faint" style={{ fontSize: 11, letterSpacing: "0.14em" }}>{EMBUDO_META.zonaIzq}</text>
-      <text x="675" y="14" textAnchor="middle" className="font-display fill-ink-faint" style={{ fontSize: 11, letterSpacing: "0.14em" }}>{EMBUDO_META.zonaDer}</text>
-
-      {EMBUDO_META.entradas.map((e, i) => (
-        <text key={e} x="4" y={70 + i * 18} className="tabular" style={{ fontSize: 9, fill: "var(--ink-faint)", fontFamily: "var(--font-inter)" }}>{e}</text>
-      ))}
-
-      {CAPAS.map((c) => {
-        const geo = ZONE_X[c.id];
-        return <polygon key={`shadow-${c.id}`} points={zonePoints(geo.x, geo.h, 3, DEPTH + 5)} fill="#000" opacity={0.35} filter="url(#infraShadow)" />;
-      })}
-
-      {CAPAS.map((c) => {
-        const geo = ZONE_X[c.id];
-        const color = ESTADO_COLOR[c.estado];
-        const isOpen = open === c.id;
-        const isHover = hovered === c.id;
-        const narrow = geo.x[1] - geo.x[0] < 100;
-        const midX = (geo.x[0] + geo.x[1]) / 2;
-        const lift = isOpen ? -5 : isHover ? -3 : 0;
-        const ghost = c.estado === "falta";
-        return (
-          <g
-            key={c.id}
-            className="cursor-pointer transition-transform duration-200 ease-out"
-            style={{ transform: `translateY(${lift}px)`, transformBox: "fill-box", transformOrigin: "center" }}
-            onMouseEnter={() => setHovered(c.id)}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() => setOpen(open === c.id ? null : c.id)}
-          >
-            {!ghost && <polygon points={zonePoints(geo.x, geo.h, 0, DEPTH)} fill={color} opacity={0.55} style={{ filter: "brightness(0.45) saturate(1.2)" }} />}
-            <polygon
-              points={zonePoints(geo.x, geo.h)}
-              fill={ghost ? "none" : color}
-              fillOpacity={ghost ? 0 : isOpen ? 0.98 : isHover ? 0.92 : 0.8}
-              stroke={color}
-              strokeWidth={isOpen ? 2.5 : ghost ? 1.5 : 0.75}
-              strokeDasharray={ghost ? "5 5" : undefined}
-              strokeOpacity={isOpen ? 1 : ghost ? 0.85 : 0.4}
-              filter={isOpen || isHover ? "url(#infraGlow)" : undefined}
-            />
-            {!ghost && <line x1={geo.x[0]} y1={CY - geo.h[0]} x2={geo.x[1]} y2={CY - geo.h[1]} stroke="#fff" strokeOpacity={0.5} strokeWidth={1} pointerEvents="none" />}
-            <text
-              x={midX} y={CY} textAnchor="middle" dominantBaseline="middle" pointerEvents="none"
-              className="font-display"
-              style={{
-                fontSize: narrow ? 11 : 14, textTransform: "uppercase",
-                fill: c.estado === "foco" ? "#0b0b0b" : ghost ? color : "#fff",
-                paintOrder: ghost || c.estado === "foco" ? undefined : "stroke",
-                stroke: ghost || c.estado === "foco" ? undefined : "rgba(0,0,0,0.35)",
-                strokeWidth: ghost || c.estado === "foco" ? undefined : 3,
-              }}
-            >
-              {c.nombre}
-            </text>
-            <text x={midX} y={CY + 22} textAnchor="middle" pointerEvents="none" className="tabular"
-              style={{ fontSize: 9, fill: c.estado === "foco" ? "#2b3a06" : ghost ? "var(--ink-faint)" : "#e8e8e8", fontFamily: "var(--font-inter)" }}>
-              {c.quien}
-            </text>
-          </g>
-        );
-      })}
-
-      <path d="M 890,214 C 700,281 220,281 30,214" fill="none" stroke="var(--accent)" strokeWidth="2" strokeDasharray="6 6" markerEnd="url(#infraLoopArrow)" style={{ filter: "drop-shadow(0 0 3px var(--accent))" }} className="infra-loop" />
-      <text x="460" y="243" textAnchor="middle" style={{ fontSize: 10, fill: "var(--ink-faint)", fontFamily: "var(--font-inter)" }}>{EMBUDO_META.loop}</text>
-    </svg>
-  );
 
   return (
     <div>
       <Section title="Infraestructura comercial" subtitle="El sistema que convierte atención en ventas. No es contenido: es lo que pasa después de que alguien levanta la mano, y es lo único que hacemos que produce un número defendible." first>
-        <div className="relative border-y border-border-strong -mx-1">
-          <div className="relative z-10 flex items-center justify-between px-3 pt-3 pb-1 font-display text-[10px] tracking-[0.15em] text-ink-faint uppercase">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_var(--accent)] animate-pulse" /> En vivo
-            </span>
-            <span className="tabular">{activeCapa ? `${activeCapa.nombre} · ${activeCapa.quien}` : "Elegí una capa"}</span>
-          </div>
-          <div className="relative py-6 px-2 [perspective:1400px]">
-            <div className="funnel-float will-change-transform" style={{ transformStyle: "preserve-3d" }}>{scene}</div>
-            <div className="pointer-events-none mt-1 opacity-20 h-16 overflow-hidden" style={{ transform: "scaleY(-1)", maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", filter: "blur(2px)" }}>
-              {scene}
-            </div>
-          </div>
-          <div className="flex items-center gap-4 px-3 pb-3 text-[10.5px] text-ink-faint flex-wrap">
-            {EMBUDO_META.leyenda.map((l) => (
-              <span key={l.tipo} className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm" style={l.tipo === "falta" ? { border: `1.5px dashed ${ESTADO_COLOR.falta}` } : { background: ESTADO_COLOR[l.tipo] }} />
-                {l.texto}
-              </span>
-            ))}
-          </div>
+        <div className="w-full border border-[#2b2b2b] bg-[#171717] px-2 py-5">
+          <EmbudoSVG capas={CAPAS} meta={EMBUDO_META} open={open} onPick={(id) => setOpen(open === id ? null : id)} />
         </div>
-        <style>{`
-          .funnel-float { animation: funnelFloat 6s ease-in-out infinite; }
-          @keyframes funnelFloat { 0%,100% { transform: rotateX(10deg) translateY(0); } 50% { transform: rotateX(7deg) translateY(-8px); } }
-          .infra-loop { animation: infraFlow 1.8s linear infinite; }
-          @keyframes infraFlow { to { stroke-dashoffset: -24; } }
-          @media (prefers-reduced-motion: reduce) { .funnel-float, .infra-loop { animation: none; } }
-        `}</style>
+        <div className="flex flex-wrap gap-6 mt-5 text-[13.5px] text-[#8d8d8d]">
+          {EMBUDO_META.leyenda.map((l) => (
+            <span key={l.tipo} className="flex items-center gap-2">
+              <i
+                className="inline-block w-3.5 h-3.5"
+                style={l.tipo === "hecho" ? { background: "#2f2f2f", border: "1px solid #4a4a4a" } : l.tipo === "foco" ? { background: LIMA } : { border: `1.5px dashed ${LIMA}` }}
+              />
+              {l.texto}
+            </span>
+          ))}
+          <span className="ml-auto text-[12px]">Tocá una capa para ver su proceso</span>
+        </div>
 
-        {activeCapa && open && (
+        {activeCapa && (
           <div className="mt-8 pt-8 border-t border-border">
             <div className="mb-4">
               <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint">Capa {activeCapa.n} · <Editable path={["CAPAS", activeIdx, "quien"]} value={activeCapa.quien} /></div>

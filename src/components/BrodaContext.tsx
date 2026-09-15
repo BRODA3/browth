@@ -41,6 +41,16 @@ function normalize(parsed: Partial<BrodaData>): BrodaData {
   const faltantes = DEFAULT_DATA.EQUIPO_BRODA.filter((m) => !personas.has(m.persona));
   if (faltantes.length) data.EQUIPO_BRODA = [...data.EQUIPO_BRODA, ...faltantes];
 
+  // La estructura no se edita desde la UI: siempre manda la del código.
+  data.ESTRUCTURA = DEFAULT_DATA.ESTRUCTURA;
+
+  // Roles viejos de Marce y Fabi (antes estaban en la red).
+  const rolesViejos: Record<string, string> = { Marce: "Growth Partner", Fabi: "Editor de BRODA" };
+  data.EQUIPO_BRODA = data.EQUIPO_BRODA.map((m) => {
+    if (rolesViejos[m.persona] !== m.rol) return m;
+    return DEFAULT_DATA.EQUIPO_BRODA.find((d) => d.persona === m.persona) ?? m;
+  });
+
   return data;
 }
 

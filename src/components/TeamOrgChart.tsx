@@ -34,7 +34,7 @@ export default function TeamOrgChart() {
         <div className="flex items-center gap-4 text-[11px] text-ink-faint">
           <Leyenda className="bg-accent" label="Núcleo" />
           <Leyenda className="bg-surface-3 border border-border-strong" label="Células" />
-          <Leyenda className="border border-dashed border-border-strong" label="Red / vacante" />
+          <Leyenda className="border border-dashed border-border-strong" label="Vacante" />
         </div>
       </div>
 
@@ -58,7 +58,15 @@ export default function TeamOrgChart() {
             {ESTRUCTURA.celulas.map((c) => (
               <div key={c.lider} className="flex flex-col items-center">
                 <div className="eyebrow mb-2.5">{c.nombre}</div>
-                {card(c.lider, "lider")}
+                <div className="flex items-center">
+                  {card(c.lider, "lider")}
+                  {c.pares.map((p) => (
+                    <div key={p} className="flex items-center">
+                      <span className="w-4 h-px bg-border-strong" />
+                      {card(p, "lider")}
+                    </div>
+                  ))}
+                </div>
                 {c.equipo.length > 0 && <span className="w-px h-6 bg-border-strong" />}
                 <Branches small>
                   {c.equipo.map((n) => <div key={n}>{card(n, "equipo")}</div>)}
@@ -68,12 +76,14 @@ export default function TeamOrgChart() {
           </Branches>
 
           {/* Red: externos, no operan el embudo */}
-          <div className="w-full mt-10 pt-6 border-t border-dashed border-border-strong flex flex-col items-center">
-            <div className="eyebrow mb-3">Red · desde afuera</div>
-            <div className="flex items-center gap-4">
-              {ESTRUCTURA.red.map((n) => <div key={n}>{card(n, "red")}</div>)}
+          {ESTRUCTURA.red.length > 0 && (
+            <div className="w-full mt-10 pt-6 border-t border-dashed border-border-strong flex flex-col items-center">
+              <div className="eyebrow mb-3">Red · desde afuera</div>
+              <div className="flex items-center gap-4">
+                {ESTRUCTURA.red.map((n) => <div key={n}>{card(n, "red")}</div>)}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

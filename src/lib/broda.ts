@@ -129,18 +129,19 @@ export const EQUIPO_BRODA: MiembroEquipo[] = [
   { persona: "Creativo", rol: "Contenido", tareas: "A contratar. Ejecuta y publica según calendario. Responde mensajes. Reporta lo que no llegó.", nucleo: false, vacante: true },
   { persona: "Editor", rol: "Editor de Juan", tareas: "Edita las entregas audiovisuales. Dentro del acuerdo con Juan.", nucleo: false },
   { persona: "Liz", rol: "Segunda editora", tareas: "En construcción bajo Juan. Por entrega.", nucleo: false },
-  { persona: "Fabi", rol: "Editor de BRODA", tareas: "Solo marca propia.", nucleo: false },
-  { persona: "Marce", rol: "Growth Partner", tareas: "Trae clientes. No entrega. Comisión por cierre.", nucleo: false },
+  { persona: "Fabi", rol: "Editor de marca", tareas: "Solo marca propia.", nucleo: false },
+  { persona: "Marce", rol: "Diseñadora y Growth Partner", tareas: "Diseño de marca. Trae clientes. Comisión por cierre.", nucleo: false },
 ];
 
-/** Cómo se ordena el equipo: núcleo decide qué, células deciden cómo, red trae o apoya desde afuera. */
+/** Cómo se ordena el equipo: núcleo decide qué, células deciden cómo.
+ * `pares` van al mismo nivel que el líder de la célula. */
 export const ESTRUCTURA = {
   nucleo: ["Charly", "Tomi", "Thiago"],
   celulas: [
-    { nombre: "Célula de marca", lider: "Mecha", equipo: ["Creativo"] },
-    { nombre: "Célula audiovisual", lider: "Juan", equipo: ["Editor", "Liz"] },
+    { nombre: "Célula de marca", lider: "Mecha", pares: ["Marce"], equipo: ["Creativo"] },
+    { nombre: "Célula audiovisual", lider: "Juan", pares: ["Fabi"], equipo: ["Editor", "Liz"] },
   ],
-  red: ["Marce", "Fabi"],
+  red: [] as string[],
 };
 
 export const ROLES_TABLA = {
