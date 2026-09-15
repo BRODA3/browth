@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Section, Nota, DocTable } from "./doc";
 import { CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION, type EstadoCapa } from "@/lib/broda";
 
 const CY = 120;
@@ -123,27 +124,29 @@ export default function InfraFunnel() {
   );
 
   return (
-    <>
-      <div className="relative rounded-xl border border-border-strong bg-panel-raised overflow-hidden">
-        <div className="relative z-10 flex items-center justify-between px-4 pt-3 pb-1 font-display text-[10px] tracking-[0.15em] text-ink-faint uppercase">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_var(--accent)] animate-pulse" /> Infraestructura comercial
-          </span>
-          <span className="tabular">{activeCapa ? `${activeCapa.nombre} · ${activeCapa.quien}` : "Elegí una capa"}</span>
-        </div>
-        <div className="relative py-6 px-2 [perspective:1400px]">
-          <div className="funnel-float will-change-transform" style={{ transformStyle: "preserve-3d" }}>{scene}</div>
-          <div className="pointer-events-none mt-1 opacity-25" style={{ transform: "scaleY(-1)", maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", filter: "blur(2px)" }}>
-            {scene}
-          </div>
-        </div>
-        <div className="flex items-center gap-4 px-4 pb-3 text-[10.5px] text-ink-faint flex-wrap">
-          {EMBUDO_META.leyenda.map((l) => (
-            <span key={l.tipo} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm" style={l.tipo === "falta" ? { border: `1.5px dashed ${ESTADO_COLOR.falta}` } : { background: ESTADO_COLOR[l.tipo] }} />
-              {l.texto}
+    <div>
+      <Section title="Infraestructura comercial" subtitle="El sistema que convierte atención en ventas. No es contenido: es lo que pasa después de que alguien levanta la mano, y es lo único que hacemos que produce un número defendible." first>
+        <div className="relative border-y border-border-strong -mx-1">
+          <div className="relative z-10 flex items-center justify-between px-3 pt-3 pb-1 font-display text-[10px] tracking-[0.15em] text-ink-faint uppercase">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_var(--accent)] animate-pulse" /> En vivo
             </span>
-          ))}
+            <span className="tabular">{activeCapa ? `${activeCapa.nombre} · ${activeCapa.quien}` : "Elegí una capa"}</span>
+          </div>
+          <div className="relative py-6 px-2 [perspective:1400px]">
+            <div className="funnel-float will-change-transform" style={{ transformStyle: "preserve-3d" }}>{scene}</div>
+            <div className="pointer-events-none mt-1 opacity-25" style={{ transform: "scaleY(-1)", maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", filter: "blur(2px)" }}>
+              {scene}
+            </div>
+          </div>
+          <div className="flex items-center gap-4 px-3 pb-3 text-[10.5px] text-ink-faint flex-wrap">
+            {EMBUDO_META.leyenda.map((l) => (
+              <span key={l.tipo} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm" style={l.tipo === "falta" ? { border: `1.5px dashed ${ESTADO_COLOR.falta}` } : { background: ESTADO_COLOR[l.tipo] }} />
+                {l.texto}
+              </span>
+            ))}
+          </div>
         </div>
         <style>{`
           .funnel-float { animation: funnelFloat 6s ease-in-out infinite; }
@@ -152,51 +155,38 @@ export default function InfraFunnel() {
           @keyframes infraFlow { to { stroke-dashoffset: -24; } }
           @media (prefers-reduced-motion: reduce) { .funnel-float, .infra-loop { animation: none; } }
         `}</style>
-      </div>
 
-      {activeCapa && open && (
-        <div className="rounded-xl border-t-[3px] bg-panel-raised shadow-lg p-5 my-4 border-x border-b border-border" style={{ borderTopColor: ESTADO_COLOR[activeCapa.estado] }}>
-          <div className="flex justify-between items-start gap-3.5 mb-3">
-            <div>
+        {activeCapa && open && (
+          <div className="mt-8 pt-8 border-t border-border">
+            <div className="mb-4">
               <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint">Capa {activeCapa.n} · {activeCapa.quien}</div>
-              <h2 className="text-xl m-0" style={{ color: ESTADO_COLOR[activeCapa.estado] }}>{activeCapa.nombre}{activeCapa.sub ? ` — ${activeCapa.sub}` : ""}</h2>
+              <h3 className="text-2xl m-0 normal-case tracking-normal" style={{ color: ESTADO_COLOR[activeCapa.estado] }}>{activeCapa.nombre}{activeCapa.sub ? ` — ${activeCapa.sub}` : ""}</h3>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-5">
+              <div>
+                <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Proceso</div>
+                <ul className="flex flex-col gap-1.5">
+                  {activeCapa.proceso.map((p, i) => <li key={i} className="text-[13.5px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-px before:bg-accent">{p}</li>)}
+                </ul>
+              </div>
+              <div>
+                <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Tareas</div>
+                <ul className="flex flex-col gap-1.5">
+                  {activeCapa.tareas.map((t, i) => <li key={i} className="text-[13.5px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-px before:bg-accent">{t}</li>)}
+                </ul>
+              </div>
+            </div>
+            <div className="border-l-[3px] pl-4 py-1 text-[13.5px] text-ink-soft" style={{ borderColor: ESTADO_COLOR[activeCapa.estado] }}>{activeCapa.estadoTexto}</div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-            <div>
-              <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Proceso</div>
-              <ul className="flex flex-col gap-1.5">
-                {activeCapa.proceso.map((p, i) => <li key={i} className="text-[13px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[9px] before:w-1.5 before:h-px before:bg-accent">{p}</li>)}
-              </ul>
-            </div>
-            <div>
-              <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Tareas</div>
-              <ul className="flex flex-col gap-1.5">
-                {activeCapa.tareas.map((t, i) => <li key={i} className="text-[13px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[9px] before:w-1.5 before:h-px before:bg-accent">{t}</li>)}
-              </ul>
-            </div>
-          </div>
-          <div className="border-l-[3px] pl-4 py-1 text-[13px] text-ink-soft" style={{ borderColor: ESTADO_COLOR[activeCapa.estado] }}>{activeCapa.estadoTexto}</div>
-        </div>
-      )}
+        )}
 
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
-        <h2 className="text-xl m-0 mb-0.5">{EMBUDO_META.nota.titulo}</h2>
-        {EMBUDO_META.nota.texto.map((t, i) => <p key={i} className="text-ink-soft text-[13px] max-w-[75ch] mt-1.5">{t}</p>)}
-      </div>
+        <Nota titulo={EMBUDO_META.nota.titulo} texto={EMBUDO_META.nota.texto} />
+      </Section>
 
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5">
-        <h2 className="text-xl m-0 mb-0.5">{ORDEN_CONSTRUCCION.nota.titulo === "La trampa" ? "En qué orden se construye" : "En qué orden se construye"}</h2>
-        <table className="w-full border-collapse mt-3">
-          <thead><tr>{ORDEN_CONSTRUCCION.encabezados.map((h) => <th key={h} className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border pr-3">{h}</th>)}</tr></thead>
-          <tbody>
-            {ORDEN_CONSTRUCCION.filas.map((f, i) => (
-              <tr key={i}>{f.map((c, j) => <td key={j} className="py-2.5 pr-3 border-b border-border text-[13px] text-ink-soft last:border-none">{c}</td>)}</tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="border-l-[3px] border-accent pl-4 py-1 text-[13px] text-ink-soft mt-4">{ORDEN_CONSTRUCCION.nota.texto}</div>
-      </div>
-    </>
+      <Section title="En qué orden se construye" subtitle="Una capa por vez. Saltar de la 01 a la 06 es lo que hace que el sistema no arranque nunca.">
+        <DocTable headers={ORDEN_CONSTRUCCION.encabezados} rows={ORDEN_CONSTRUCCION.filas} />
+        <Nota titulo={ORDEN_CONSTRUCCION.nota.titulo} texto={ORDEN_CONSTRUCCION.nota.texto} />
+      </Section>
+    </div>
   );
 }

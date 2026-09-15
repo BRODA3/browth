@@ -6,7 +6,9 @@ import OrgChart from "./OrgChart";
 import InfraFunnel from "./InfraFunnel";
 import NorthStar from "./NorthStar";
 import BusinessCase from "./BusinessCase";
-import TopNav, { type View } from "./TopNav";
+import EstrategiaContenido from "./EstrategiaContenido";
+import PlanContenido from "./PlanContenido";
+import { ModeSwitch, SideNav, type Mode, type View } from "./Nav";
 import { EQUIPO_BRODA, BRODAWEEK } from "@/lib/broda";
 import {
   STAGES, TASKS, AGENTS, ROLES, COVERAGE, EXPERIMENTS, STACK, FUNNEL_ZONES,
@@ -46,6 +48,7 @@ export default function App() {
 
   const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
   const [selectedClientId, setSelectedClientId] = useState<string>((persisted.clients?.length ? persisted.clients : SEED_CLIENTS)[0].id);
+  const [mode, setMode] = useState<Mode>("broda");
   const [view, setView] = useState<View>("northstar");
   const [openZone, setOpenZone] = useState<string | null>(null);
   const [playbookFilter, setPlaybookFilter] = useState<StageId | null>(null);
@@ -123,17 +126,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <TopNav view={view} onSetView={setView} />
-      <div className={scoped ? "grid grid-cols-[240px_1fr]" : "grid grid-cols-1"}>
-        {scoped && (
-          <ClientRail
-            clients={clients}
-            selectedClientId={selectedClientId}
-            onSelectClient={(id) => { setSelectedClientId(id); setOpenZone(null); }}
-            onAddClient={addClient}
-          />
-        )}
-        <main className={`px-8 pt-24 pb-16 ${scoped ? "max-w-[1180px]" : "max-w-[900px] mx-auto"}`}>
+      <ModeSwitch mode={mode} onSetMode={(m) => { setMode(m); setView(m === "broda" ? "northstar" : "pipeline"); }} />
+      <div className="flex">
+        <SideNav
+          mode={mode}
+          view={view}
+          onSetView={setView}
+          clients={clients}
+          selectedClientId={selectedClientId}
+          onSelectClient={(id) => { setSelectedClientId(id); setOpenZone(null); }}
+          onAddClient={addClient}
+        />
+        <main className={`flex-1 min-w-0 px-10 py-10 pb-24 ${scoped ? "max-w-[1180px]" : "max-w-[880px]"}`}>
           {scoped && (
             <div className="flex items-baseline justify-between flex-wrap gap-2.5 mb-6">
               <div>
@@ -145,11 +149,13 @@ export default function App() {
               </span>
             </div>
           )}
-          {!scoped && <NavHeader view={view} />}
+          {view === "playbooks" && <NavHeader view={view} />}
 
           {view === "northstar" && <NorthStar />}
           {view === "businesscase" && <BusinessCase />}
           {view === "infra" && <InfraFunnel />}
+          {view === "estrategia" && <EstrategiaContenido />}
+          {view === "plan" && <PlanContenido />}
           {view === "pipeline" && (
             <Pipeline
               zoneCompletions={zoneCompletions}
@@ -194,136 +200,41 @@ export default function App() {
   );
 }
 
-const VIEW_TITLES: Record<View, string> = {
-  northstar: "North Star",
-  businesscase: "Business Case",
-  infra: "Infraestructura comercial",
-  pipeline: "Pipeline",
-  equipo: "Equipo",
-  playbooks: "Playbooks",
-  agentes: "Agentes IA",
-  metricas: "Métricas",
-};
-
 function NavHeader({ view }: { view: View }) {
   return (
     <div className="mb-6">
-      <h1 className="text-3xl m-0">{VIEW_TITLES[view]}</h1>
+      <h1 className="text-3xl m-0">{view === "playbooks" ? "Playbooks" : ""}</h1>
     </div>
   );
 }
 
 function EquipoBroda() {
   return (
-    <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5">
-      <h2 className="text-xl m-0 mb-0.5">El equipo real</h2>
-      <p className="text-ink-soft text-[12.5px] mb-4 max-w-[70ch]">El núcleo decide qué se hace y para quién. Las células deciden cómo.</p>
+    <div className="pt-10 mt-6 border-t border-border">
+      <h2 className="text-[clamp(26px,3.4vw,40px)] leading-[1.02] mb-3">El equipo real</h2>
+      <p className="text-ink-soft text-[15px] leading-relaxed max-w-[66ch] mb-8">El núcleo decide qué se hace y para quién. Las células deciden cómo. Si a un socio le llega una pregunta de cómo, la devuelve.</p>
       <table className="w-full border-collapse">
-        <thead><tr><th className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border">Persona</th><th className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border pl-4">Rol</th><th className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border pl-4">Tareas fijas</th></tr></thead>
+        <thead><tr><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border pr-6">Persona</th><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border pr-6">Rol</th><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border">Tareas fijas</th></tr></thead>
         <tbody>
           {EQUIPO_BRODA.map((m) => (
             <tr key={m.persona}>
-              <td className={`py-2.5 border-b border-border text-[13px] font-semibold ${m.nucleo ? "text-accent" : "text-ink"}`}>{m.persona}</td>
-              <td className="py-2.5 border-b border-border text-[13px] text-ink-soft pl-4">{m.rol}</td>
-              <td className="py-2.5 border-b border-border text-[12.5px] text-ink-faint pl-4">{m.tareas}</td>
+              <td className={`py-3 border-b border-border text-[14px] font-semibold pr-6 align-top ${m.nucleo ? "text-accent" : "text-ink"}`}>{m.persona}</td>
+              <td className="py-3 border-b border-border text-[14px] text-ink-soft pr-6 align-top">{m.rol}</td>
+              <td className="py-3 border-b border-border text-[13.5px] text-ink-faint align-top">{m.tareas}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="mt-5 pt-4 border-t border-border">
-        <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">BRODAWEEK</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {BRODAWEEK.filas.map((f) => (
-            <div key={f[0]} className="border border-border rounded-lg p-3">
-              <div className="font-display font-bold text-sm">{f[0]} · {f[1]}</div>
-              <div className="text-[12px] text-ink-soft mt-1">{f[2]}</div>
-              <div className="text-[10.5px] text-ink-faint mt-1.5">{f[3]}</div>
+      <div className="mt-10 pt-8 border-t border-border">
+        <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-4">BRODAWEEK</div>
+        <div className="flex flex-col">
+          {BRODAWEEK.filas.map((f, i) => (
+            <div key={f[0]} className={`flex flex-col md:flex-row md:items-baseline gap-1 md:gap-6 py-3.5 ${i < BRODAWEEK.filas.length - 1 ? "border-b border-border" : ""}`}>
+              <span className="font-display font-bold text-[15px] w-44 shrink-0">{f[0]} · {f[1]}</span>
+              <span className="text-[13.5px] text-ink-soft flex-1">{f[2]}</span>
+              <span className="text-[11px] text-ink-faint tabular shrink-0">{f[3]}</span>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- CLIENT RAIL ---------------- */
-
-function ClientRail({
-  clients, selectedClientId, onSelectClient, onAddClient,
-}: {
-  clients: Client[]; selectedClientId: string; onSelectClient: (id: string) => void;
-  onAddClient: (name: string, tier: string, industry: string) => void;
-}) {
-  const [showModal, setShowModal] = useState(false);
-  return (
-    <nav className="bg-panel border-r border-border px-4 pt-24 pb-4 flex flex-col gap-4.5 h-screen sticky top-0 overflow-y-auto">
-      <div className="flex flex-col gap-1.5">
-        <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint px-1.5">Cuentas</div>
-        {clients.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => onSelectClient(c.id)}
-            className={`flex items-center gap-2 px-2 py-2 rounded-md text-left w-full ${
-              c.id === selectedClientId ? "bg-panel-raised border border-border shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] text-ink" : "text-ink-soft border border-transparent"
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.id === selectedClientId ? "bg-accent" : "bg-border-strong"}`} />
-            <span className="min-w-0 flex-1">
-              <div className="font-semibold text-[13px] overflow-hidden text-ellipsis whitespace-nowrap">{c.name}</div>
-              <div className="text-[10px] text-ink-faint">{c.tier}</div>
-            </span>
-          </button>
-        ))}
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-dashed border-border-strong text-ink-faint text-xs hover:text-ink hover:border-accent">
-          + Nueva cuenta
-        </button>
-      </div>
-
-      <div className="mt-auto flex flex-col gap-2">
-        <div className="flex items-center gap-2 p-2 border border-border rounded-lg bg-panel-raised">
-          <div className="w-[30px] h-[30px] rounded-lg bg-accent flex items-center justify-center font-display font-black text-accent-ink text-[13px]">B</div>
-          <div>
-            <div className="font-display font-extrabold text-[11px] uppercase">Brodita</div>
-            <div className="text-[9.5px] text-ink-faint">Mascota de growth</div>
-          </div>
-        </div>
-        <div className="text-[10px] text-ink-faint px-0.5">modo local · sin backend aún</div>
-      </div>
-
-      {showModal && (
-        <AddClientModal onClose={() => setShowModal(false)} onCreate={(n, t, i) => { onAddClient(n, t, i); setShowModal(false); }} />
-      )}
-    </nav>
-  );
-}
-
-function AddClientModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, tier: string, industry: string) => void }) {
-  const [name, setName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [tier, setTier] = useState("Growth");
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-5" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-panel-raised border border-border rounded-xl p-5 w-full max-w-sm">
-        <h3 className="text-base normal-case tracking-normal font-display font-bold mb-3">Nueva cuenta</h3>
-        <label className="flex flex-col gap-1 text-[11px] text-ink-faint mb-2.5">
-          Nombre
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Acme Corp" className="border border-border-strong rounded-md px-2.5 py-1.5 bg-panel text-ink" />
-        </label>
-        <label className="flex flex-col gap-1 text-[11px] text-ink-faint mb-2.5">
-          Industria
-          <input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="Ej: E-commerce" className="border border-border-strong rounded-md px-2.5 py-1.5 bg-panel text-ink" />
-        </label>
-        <label className="flex flex-col gap-1 text-[11px] text-ink-faint mb-2.5">
-          Tier
-          <select value={tier} onChange={(e) => setTier(e.target.value)} className="border border-border-strong rounded-md px-2.5 py-1.5 bg-panel text-ink">
-            <option>Growth</option>
-            <option>Enterprise</option>
-            <option>Piloto</option>
-          </select>
-        </label>
-        <div className="flex justify-end gap-2 mt-1.5">
-          <button onClick={onClose} className="text-accent font-display font-extrabold uppercase text-xs px-3.5 py-2">Cancelar</button>
-          <button onClick={() => name.trim() && onCreate(name.trim(), tier, industry.trim())} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-xs px-3.5 py-2 rounded-md">Crear</button>
         </div>
       </div>
     </div>

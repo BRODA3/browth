@@ -254,3 +254,99 @@ export const Q4 = {
     ],
   },
 };
+
+export const ESTRATEGIA = {
+  bajada: "Un video horizontal y una placa por semana. Ocho piezas al mes, bien hechas. El contenido no trae leads: sostiene el precio y hace que el lead que llega por otro lado nos crea.",
+  audiencia: [
+    { destacado: true, celdas: ["Cliente — B2B", "Dueños de negocios con 2 a 5 años de tracción, creciendo sin sistema", "Es el ICP. Todo MOFU y BOFU se escribe para él."] },
+    { destacado: false, celdas: ["Audiencia — B2C", "Emprendedores y freelance de 20 a 40 años con una habilidad", "No es cliente. Entra en TOFU: comparte, hace crecer la cuenta y valida la autoridad."] },
+  ],
+  embudo: [
+    { capa: "TOFU", pilar: "Filosofía", peso: "4 de 8 piezas", trabajo: "Que alguien que no nos conoce se quede",
+      temas: ["Modelos mentales", "Ser, hacer, tener", "Emprender", "El observador", "Amistad y libertad", "El movimiento", "Empoderamiento"],
+      formato: "Video horizontal en YouTube · 2 a 3 verticales por pieza para Instagram", metrica: "Alcance de no seguidores y guardados" },
+    { capa: "MOFU", pilar: "Criterio", peso: "3 de 8 piezas", trabajo: "Que entienda que sabemos de qué hablamos",
+      temas: ["Meta Ads", "Construcción de marca", "Growth", "Inteligencia artificial", "Contenido", "Ventas"],
+      formato: "Placa o carrusel · fragmento de video", metrica: "Seguidores nuevos y respuestas en historias" },
+    { capa: "BOFU", pilar: "Documental", peso: "1 de 8 piezas", trabajo: "Que quiera hablar con nosotros",
+      temas: ["El proceso por dentro", "Visión", "Transformación", "Prueba social — bloqueado hasta tener el número"],
+      formato: "Video documental · placa de resultado", metrica: "Conversaciones iniciadas por DM" },
+  ],
+  ritmo: {
+    encabezados: ["Semana", "Video horizontal", "Placa", "Capa"],
+    filas: [
+      ["Uno", "Filosofía — un modelo mental aplicado a un negocio", "Criterio — una idea suelta del video", "TOFU"],
+      ["Dos", "Criterio — cómo pensamos un problema real", "Filosofía — una frase del movimiento", "MOFU"],
+      ["Tres", "Filosofía — ser, hacer, tener", "Criterio — un error que vemos siempre", "TOFU"],
+      ["Cuatro", "Documental — el proceso por dentro", "Documental — visión o transformación", "BOFU"],
+    ],
+  },
+  reglas: [
+    "Se graba horizontal. YouTube lo publica entero, Instagram recibe dos o tres verticales sacados del mismo material.",
+    "Una pieza por semana, muy buena. No hay compensación por volumen: ocho piezas mediocres valen menos que cuatro buenas.",
+    "Aparecen los tres, pero no es obligatorio en cada pieza. La Hermandad se muestra, no se anuncia.",
+    "El pilar Prueba social queda bloqueado hasta que exista un resultado verificable. Sin eso, BOFU se sostiene con proceso y visión.",
+    "El contenido no responde por leads. Responde por autoridad, que es lo que hace defendible el precio de 850.",
+  ],
+  nota: {
+    titulo: "Lo que este contenido puede y no puede hacer",
+    texto: [
+      "Ocho piezas al mes en una cuenta que recién arranca no producen leads calificados en noventa días. Producen algo distinto y necesario: que cuando un lead llegue por pauta, por referido o por el sistema comercial, encuentre una marca que ya tiene criterio demostrado.",
+      "Pedirle leads al contenido lleva a la conclusión equivocada en noviembre: que no funciona, cuando en realidad estaba haciendo bien otro trabajo.",
+    ],
+  },
+};
+
+export interface PiezaPlan {
+  id: string;
+  prioridad: boolean;
+  fecha: string;
+  canal: "ig" | "li" | "yt";
+  canalLabel: string;
+  formato: string;
+  tema: string;
+  pilar: string;
+  estado: string;
+  detalle: string;
+}
+
+export const PLAN = {
+  bajada: "Prioridad primero: lo que ya está grabado o diseñado sale antes que lo nuevo.",
+  leyenda: [
+    { tipo: "ig", label: "Instagram" },
+    { tipo: "li", label: "LinkedIn" },
+    { tipo: "yt", label: "YouTube" },
+  ],
+  filas: [
+    { id: "p1", prioridad: true, fecha: "2026-09-15", canal: "ig", canalLabel: "Instagram", formato: "Reel", tema: "Expo Mercado Libre", pilar: "Documental · Nutrición (MOFU)", estado: "Espera guion y material de la expo",
+      detalle: "Storytelling con dinamismo real: cortes cada 1-2 segundos, cámara en mano, texto en pantalla que refuerza —no repite— lo que se dice en voz. Arranca en la mitad de la acción, en la expo. Cierre con una idea de criterio, no con una venta." },
+    { id: "p2", prioridad: false, fecha: "2026-09-16", canal: "li", canalLabel: "LinkedIn", formato: "Post", tema: "Qué vimos en la Expo Mercado Libre, en criterio B2B", pilar: "Criterio · Nutrición (MOFU)", estado: "Espera redacción",
+      detalle: "Post de texto, sin foto obligatoria. Toma un solo insight de la expo y lo cruza con el ICP (dueño de PyME sin sistema). Cierre sin CTA de venta." },
+    { id: "p3", prioridad: false, fecha: "2026-09-18", canal: "ig", canalLabel: "Instagram", formato: "Placa", tema: "“Ser, hacer, tener”", pilar: "Filosofía · Awareness (TOFU)", estado: "Listo para publicar",
+      detalle: "Placa ya diseñada en Figma (broda-social-media). No requiere producción — pasa directo a programación." },
+    { id: "p4", prioridad: true, fecha: "2026-09-22", canal: "ig", canalLabel: "Instagram", formato: "Reel", tema: "BroViaje — parte 1, detrás de cámara", pilar: "Documental · Nutrición (MOFU)", estado: "Espera guion",
+      detalle: "Adelanto dinámico del viaje a Córdoba: 60-90 seg, ritmo alto, un momento fuerte real, no actuado. Mismo material que el video largo de YouTube, corte corto para IG." },
+    { id: "p5", prioridad: true, fecha: "2026-09-23", canal: "yt", canalLabel: "YouTube", formato: "Video largo", tema: "BroViaje Córdoba (~20 min, crudo y queso)", pilar: "Documental · Nutrición (MOFU)", estado: "Espera corte de edición",
+      detalle: "Documental completo, formato 'crudo y queso': cámara cerca, mínima edición de por medio, se nota que es real. Muestra cultura y forma de trabajar, no vende nada." },
+    { id: "p6", prioridad: false, fecha: "2026-09-25", canal: "ig", canalLabel: "Instagram", formato: "Placa", tema: "“(No) buscamos clics”", pilar: "Criterio · Awareness (TOFU)", estado: "Listo para publicar",
+      detalle: "Placa ya diseñada en Figma. Lista para programar." },
+    { id: "p7", prioridad: false, fecha: "2026-09-26", canal: "li", canalLabel: "LinkedIn", formato: "Post", tema: "Browth explicado para dueños de PyME sin sistema", pilar: "Criterio · Awareness (TOFU)", estado: "Espera redacción",
+      detalle: "Post de texto explicando en criterio (no en venta) qué es Browth y por qué una PyME con tracción y sin sistema lo necesita." },
+    { id: "p8", prioridad: false, fecha: "2026-09-29", canal: "ig", canalLabel: "Instagram", formato: "Placa", tema: "“Avanzar sirve cuando sabés para qué”", pilar: "Filosofía · Awareness (TOFU)", estado: "Listo para publicar",
+      detalle: "Placa ya diseñada en Figma. Lista para programar." },
+    { id: "p9", prioridad: false, fecha: "2026-10-01", canal: "li", canalLabel: "LinkedIn", formato: "Post", tema: "Insight: qué mide growth de verdad", pilar: "Criterio · Nutrición (MOFU)", estado: "Espera redacción",
+      detalle: "Post de opinión: qué métrica de vanidad se descarta y cuál sí importa para una PyME en growth." },
+    { id: "p10", prioridad: false, fecha: "2026-10-02", canal: "ig", canalLabel: "Instagram", formato: "Reel", tema: "Contenido nuevo — a definir", pilar: "Sin asignar", estado: "Bloque abierto",
+      detalle: "Todavía no tiene tema asignado. Definir ángulo (Filosofía/Criterio/Documental) antes del 25/9 para dar tiempo de producción." },
+    { id: "p11", prioridad: false, fecha: "2026-10-06", canal: "ig", canalLabel: "Instagram", formato: "Placa", tema: "“No todo lo que falta está afuera”", pilar: "Documental · Nutrición (MOFU)", estado: "Listo para publicar",
+      detalle: "Placa ya diseñada en Figma. Lista para programar." },
+    { id: "p12", prioridad: false, fecha: "2026-10-08", canal: "li", canalLabel: "LinkedIn", formato: "Post", tema: "Prueba social — si ya hay caso verificable", pilar: "Documental · Nutrición (MOFU)", estado: "Espera confirmación de caso",
+      detalle: "Solo se escribe si hay un resultado con número, fecha y fuente confirmados. Si no está listo para esta fecha, se corre." },
+    { id: "p13", prioridad: false, fecha: "2026-10-09", canal: "ig", canalLabel: "Instagram", formato: "Reel", tema: "Contenido nuevo — a definir", pilar: "Sin asignar", estado: "Bloque abierto",
+      detalle: "Todavía no tiene tema asignado." },
+  ] as PiezaPlan[],
+  reservas: [
+    "“Mutar es Broda” (collage de equipo) — ya diseñada, sin fecha asignada",
+    "“Ser reconocible es más que ser visible” — ya diseñada, sin fecha asignada",
+  ],
+};
