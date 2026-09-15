@@ -9,7 +9,8 @@ import BusinessCase from "./BusinessCase";
 import EstrategiaContenido from "./EstrategiaContenido";
 import PlanContenido from "./PlanContenido";
 import { ModeSwitch, SideNav, type Mode, type View } from "./Nav";
-import { EQUIPO_BRODA, BRODAWEEK } from "@/lib/broda";
+import { BrodaProvider, useBroda } from "./BrodaContext";
+import { Editable } from "./doc";
 import {
   STAGES, TASKS, AGENTS, ROLES, COVERAGE, EXPERIMENTS, STACK, FUNNEL_ZONES,
   STATUS_OPTIONS, AGENT_STATUS_OPTIONS, KPI_FIELDS,
@@ -39,6 +40,14 @@ function loadPersisted<T>(fallback: T): T {
 }
 
 export default function App() {
+  return (
+    <BrodaProvider>
+      <AppInner />
+    </BrodaProvider>
+  );
+}
+
+function AppInner() {
   const persisted = useMemo(() => loadPersisted<{
     clients?: Client[];
     taskStatusByClient?: Record<string, Record<string, TaskStatus>>;
@@ -209,6 +218,7 @@ function NavHeader({ view }: { view: View }) {
 }
 
 function EquipoBroda() {
+  const { data } = useBroda();
   return (
     <div className="pt-10 mt-6 border-t border-border">
       <h2 className="text-[clamp(26px,3.4vw,40px)] leading-[1.02] mb-3">El equipo real</h2>
@@ -216,11 +226,11 @@ function EquipoBroda() {
       <table className="w-full border-collapse">
         <thead><tr><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border pr-6">Persona</th><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border pr-6">Rol</th><th className="text-left font-display font-extrabold text-[11px] uppercase tracking-wide text-ink-faint pb-2.5 border-b border-border">Tareas fijas</th></tr></thead>
         <tbody>
-          {EQUIPO_BRODA.map((m) => (
-            <tr key={m.persona}>
-              <td className={`py-3 border-b border-border text-[14px] font-semibold pr-6 align-top ${m.nucleo ? "text-accent" : "text-ink"}`}>{m.persona}</td>
-              <td className="py-3 border-b border-border text-[14px] text-ink-soft pr-6 align-top">{m.rol}</td>
-              <td className="py-3 border-b border-border text-[13.5px] text-ink-faint align-top">{m.tareas}</td>
+          {data.EQUIPO_BRODA.map((m, i) => (
+            <tr key={i}>
+              <td className={`py-3 border-b border-border text-[14px] font-semibold pr-6 align-top ${m.nucleo ? "text-accent" : "text-ink"}`}><Editable path={["EQUIPO_BRODA", i, "persona"]} value={m.persona} /></td>
+              <td className="py-3 border-b border-border text-[14px] text-ink-soft pr-6 align-top"><Editable path={["EQUIPO_BRODA", i, "rol"]} value={m.rol} /></td>
+              <td className="py-3 border-b border-border text-[13.5px] text-ink-faint align-top"><Editable path={["EQUIPO_BRODA", i, "tareas"]} value={m.tareas} multiline /></td>
             </tr>
           ))}
         </tbody>
@@ -228,11 +238,11 @@ function EquipoBroda() {
       <div className="mt-10 pt-8 border-t border-border">
         <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-4">BRODAWEEK</div>
         <div className="flex flex-col">
-          {BRODAWEEK.filas.map((f, i) => (
-            <div key={f[0]} className={`flex flex-col md:flex-row md:items-baseline gap-1 md:gap-6 py-3.5 ${i < BRODAWEEK.filas.length - 1 ? "border-b border-border" : ""}`}>
-              <span className="font-display font-bold text-[15px] w-44 shrink-0">{f[0]} · {f[1]}</span>
-              <span className="text-[13.5px] text-ink-soft flex-1">{f[2]}</span>
-              <span className="text-[11px] text-ink-faint tabular shrink-0">{f[3]}</span>
+          {data.BRODAWEEK.filas.map((f, i) => (
+            <div key={i} className={`flex flex-col md:flex-row md:items-baseline gap-1 md:gap-6 py-3.5 ${i < data.BRODAWEEK.filas.length - 1 ? "border-b border-border" : ""}`}>
+              <span className="font-display font-bold text-[15px] w-44 shrink-0"><Editable path={["BRODAWEEK", "filas", i, 0]} value={f[0]} /> · <Editable path={["BRODAWEEK", "filas", i, 1]} value={f[1]} /></span>
+              <span className="text-[13.5px] text-ink-soft flex-1"><Editable path={["BRODAWEEK", "filas", i, 2]} value={f[2]} /></span>
+              <span className="text-[11px] text-ink-faint tabular shrink-0"><Editable path={["BRODAWEEK", "filas", i, 3]} value={f[3]} /></span>
             </div>
           ))}
         </div>

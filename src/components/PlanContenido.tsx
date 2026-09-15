@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Section, Eyebrow } from "./doc";
-import { PLAN, type PiezaPlan } from "@/lib/broda";
+import { Section, Eyebrow, Editable } from "./doc";
+import { useBroda } from "./BrodaContext";
 
 const CANAL_COLOR: Record<string, string> = { ig: "#C8F542", li: "#4FD1FF", yt: "#FF5C5C" };
 const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -22,7 +22,11 @@ function fechaISO(year: number, month: number, day: number) {
 }
 
 export default function PlanContenido() {
-  const [open, setOpen] = useState<PiezaPlan | null>(null);
+  const { data } = useBroda();
+  const PLAN = data.PLAN;
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openIdx = openId ? PLAN.filas.findIndex((p) => p.id === openId) : -1;
+  const open = openIdx >= 0 ? PLAN.filas[openIdx] : null;
   const meses = [
     { year: 2026, month: 8, nombre: "Septiembre 2026" }, // month 0-indexed: 8 = Sept
     { year: 2026, month: 9, nombre: "Octubre 2026" },
@@ -57,7 +61,7 @@ export default function PlanContenido() {
                       {piezas.map((p) => (
                         <button
                           key={p.id}
-                          onClick={() => setOpen(p)}
+                          onClick={() => setOpenId(p.id)}
                           className="w-full text-left mt-1 text-[10px] font-semibold px-1.5 py-1 rounded flex items-center gap-1.5 bg-panel-raised border border-transparent hover:border-current"
                           style={{ color: CANAL_COLOR[p.canal], boxShadow: p.prioridad ? `inset 2px 0 0 ${CANAL_COLOR[p.canal]}` : undefined }}
                         >
@@ -78,7 +82,9 @@ export default function PlanContenido() {
             <Eyebrow>En reserva, sin fecha</Eyebrow>
             <ul className="flex flex-col">
               {PLAN.reservas.map((r, i) => (
-                <li key={i} className="text-[13px] text-ink-faint py-2 border-b border-border last:border-none">{r}</li>
+                <li key={i} className="text-[13px] text-ink-faint py-2 border-b border-border last:border-none">
+                  <Editable path={["PLAN", "reservas", i]} value={r} multiline />
+                </li>
               ))}
             </ul>
           </div>
@@ -86,16 +92,18 @@ export default function PlanContenido() {
       </Section>
 
       {open && (
-        <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-[60] p-5" onClick={(e) => e.target === e.currentTarget && setOpen(null)}>
+        <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-[60] p-5" onClick={(e) => e.target === e.currentTarget && setOpenId(null)}>
           <div className="bg-panel border border-border-strong max-w-lg w-full p-7 relative">
-            <button onClick={() => setOpen(null)} className="absolute top-3 right-4 text-ink-faint hover:text-ink text-lg">✕</button>
+            <button onClick={() => setOpenId(null)} className="absolute top-3 right-4 text-ink-faint hover:text-ink text-lg">✕</button>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2 h-2 rounded-full" style={{ background: CANAL_COLOR[open.canal] }} />
-              <span className="text-[11px] font-semibold" style={{ color: CANAL_COLOR[open.canal] }}>{open.canalLabel} · {open.formato}</span>
+              <span className="text-[11px] font-semibold" style={{ color: CANAL_COLOR[open.canal] }}>{open.canalLabel} · <Editable path={["PLAN", "filas", openIdx, "formato"]} value={open.formato} /></span>
             </div>
-            <h3 className="text-xl normal-case tracking-normal font-display font-bold mb-1">{open.tema}</h3>
-            <div className="text-[11.5px] text-ink-faint mb-4">{open.fecha} · {open.pilar} · {open.estado}</div>
-            <p className="text-[13.5px] text-ink-soft leading-relaxed">{open.detalle}</p>
+            <h3 className="text-xl normal-case tracking-normal font-display font-bold mb-1"><Editable path={["PLAN", "filas", openIdx, "tema"]} value={open.tema} /></h3>
+            <div className="text-[11.5px] text-ink-faint mb-4 flex items-center gap-1 flex-wrap">
+              {open.fecha} · <Editable path={["PLAN", "filas", openIdx, "pilar"]} value={open.pilar} /> · <Editable path={["PLAN", "filas", openIdx, "estado"]} value={open.estado} />
+            </div>
+            <p className="text-[13.5px] text-ink-soft leading-relaxed"><Editable path={["PLAN", "filas", openIdx, "detalle"]} value={open.detalle} multiline /></p>
           </div>
         </div>
       )}

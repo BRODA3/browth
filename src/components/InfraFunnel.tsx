@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Section, Nota, DocTable } from "./doc";
-import { CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION, type EstadoCapa } from "@/lib/broda";
+import { Section, Nota, DocTable, Editable } from "./doc";
+import { useBroda } from "./BrodaContext";
+import { type EstadoCapa } from "@/lib/broda";
 
 const CY = 120;
 const VIEW_W = 920;
@@ -33,10 +34,13 @@ function zonePoints(x: [number, number], h: [number, number], dx = 0, dy = 0) {
 }
 
 export default function InfraFunnel() {
+  const { data } = useBroda();
+  const { CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION } = data;
   const [open, setOpen] = useState<string | null>("convertir");
   const [hovered, setHovered] = useState<string | null>(null);
   const activeId = hovered ?? open;
-  const activeCapa = activeId ? CAPAS.find((c) => c.id === activeId) : null;
+  const activeIdx = activeId ? CAPAS.findIndex((c) => c.id === activeId) : -1;
+  const activeCapa = activeIdx >= 0 ? CAPAS[activeIdx] : null;
 
   const scene = (
     <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H + DEPTH}`} className="w-full h-auto block" role="img" aria-label="Infraestructura comercial de Broda: las 7 capas">
@@ -159,33 +163,50 @@ export default function InfraFunnel() {
         {activeCapa && open && (
           <div className="mt-8 pt-8 border-t border-border">
             <div className="mb-4">
-              <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint">Capa {activeCapa.n} · {activeCapa.quien}</div>
-              <h3 className="text-2xl m-0 normal-case tracking-normal" style={{ color: ESTADO_COLOR[activeCapa.estado] }}>{activeCapa.nombre}{activeCapa.sub ? ` — ${activeCapa.sub}` : ""}</h3>
+              <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint">Capa {activeCapa.n} · <Editable path={["CAPAS", activeIdx, "quien"]} value={activeCapa.quien} /></div>
+              <h3 className="text-2xl m-0 normal-case tracking-normal" style={{ color: ESTADO_COLOR[activeCapa.estado] }}>
+                <Editable path={["CAPAS", activeIdx, "nombre"]} value={activeCapa.nombre} />
+                {activeCapa.sub != null && <> — <Editable path={["CAPAS", activeIdx, "sub"]} value={activeCapa.sub} /></>}
+              </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-5">
               <div>
                 <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Proceso</div>
                 <ul className="flex flex-col gap-1.5">
-                  {activeCapa.proceso.map((p, i) => <li key={i} className="text-[13.5px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-px before:bg-accent">{p}</li>)}
+                  {activeCapa.proceso.map((p, i) => (
+                    <li key={i} className="text-[13.5px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-px before:bg-accent">
+                      <Editable path={["CAPAS", activeIdx, "proceso", i]} value={p} multiline />
+                    </li>
+                  ))}
                 </ul>
               </div>
               <div>
                 <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Tareas</div>
                 <ul className="flex flex-col gap-1.5">
-                  {activeCapa.tareas.map((t, i) => <li key={i} className="text-[13.5px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-px before:bg-accent">{t}</li>)}
+                  {activeCapa.tareas.map((t, i) => (
+                    <li key={i} className="text-[13.5px] text-ink-soft pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[10px] before:w-1.5 before:h-px before:bg-accent">
+                      <Editable path={["CAPAS", activeIdx, "tareas", i]} value={t} multiline />
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
-            <div className="border-l-[3px] pl-4 py-1 text-[13.5px] text-ink-soft" style={{ borderColor: ESTADO_COLOR[activeCapa.estado] }}>{activeCapa.estadoTexto}</div>
+            <div className="border-l-[3px] pl-4 py-1 text-[13.5px] text-ink-soft" style={{ borderColor: ESTADO_COLOR[activeCapa.estado] }}>
+              <Editable path={["CAPAS", activeIdx, "estadoTexto"]} value={activeCapa.estadoTexto} multiline />
+            </div>
           </div>
         )}
 
-        <Nota titulo={EMBUDO_META.nota.titulo} texto={EMBUDO_META.nota.texto} />
+        <Nota titulo={EMBUDO_META.nota.titulo} texto={EMBUDO_META.nota.texto} path={["EMBUDO_META", "nota"]} />
       </Section>
 
       <Section title="En qué orden se construye" subtitle="Una capa por vez. Saltar de la 01 a la 06 es lo que hace que el sistema no arranque nunca.">
-        <DocTable headers={ORDEN_CONSTRUCCION.encabezados} rows={ORDEN_CONSTRUCCION.filas} />
-        <Nota titulo={ORDEN_CONSTRUCCION.nota.titulo} texto={ORDEN_CONSTRUCCION.nota.texto} />
+        <DocTable
+          headers={ORDEN_CONSTRUCCION.encabezados}
+          rows={ORDEN_CONSTRUCCION.filas}
+          paths={ORDEN_CONSTRUCCION.filas.map((_, i) => [["ORDEN_CONSTRUCCION", "filas", i, 0], ["ORDEN_CONSTRUCCION", "filas", i, 1], ["ORDEN_CONSTRUCCION", "filas", i, 2]])}
+        />
+        <Nota titulo={ORDEN_CONSTRUCCION.nota.titulo} texto={ORDEN_CONSTRUCCION.nota.texto} path={["ORDEN_CONSTRUCCION", "nota"]} />
       </Section>
     </div>
   );

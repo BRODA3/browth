@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Client } from "@/lib/data";
+import { useBroda } from "./BrodaContext";
 
 export type Mode = "broda" | "clientes";
 export type View =
@@ -26,6 +27,7 @@ export const CLIENTES_ITEMS: { id: View; label: string }[] = [
 ];
 
 export function ModeSwitch({ mode, onSetMode }: { mode: Mode; onSetMode: (m: Mode) => void }) {
+  const { editMode, setEditMode } = useBroda();
   return (
     <div className="sticky top-0 z-50 h-14 bg-panel border-b border-border flex items-center px-5 gap-6">
       <div className="flex items-center gap-2 shrink-0">
@@ -47,6 +49,16 @@ export function ModeSwitch({ mode, onSetMode }: { mode: Mode; onSetMode: (m: Mod
           </button>
         ))}
       </div>
+      {mode === "broda" && (
+        <button
+          onClick={() => setEditMode(!editMode)}
+          className={`flex items-center gap-1.5 font-display font-extrabold uppercase text-[11px] tracking-wide px-3.5 py-1.5 rounded-full border transition-colors ${
+            editMode ? "bg-accent text-accent-ink border-accent" : "text-ink-soft border-border-strong hover:text-ink"
+          }`}
+        >
+          <span>✎</span> {editMode ? "Editando" : "Editar"}
+        </button>
+      )}
       <div className="ml-auto flex items-center gap-2 text-[10px] text-ink-faint">
         <div className="w-6 h-6 rounded-md bg-accent flex items-center justify-center font-display font-black text-accent-ink text-[11px]">B</div>
         Brodita
