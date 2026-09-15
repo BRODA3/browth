@@ -9,6 +9,8 @@ import NorthStar from "./NorthStar";
 import BusinessCase from "./BusinessCase";
 import EstrategiaContenido from "./EstrategiaContenido";
 import PlanContenido from "./PlanContenido";
+import Crm from "./Crm";
+import type { Oportunidad } from "@/lib/crm";
 import { TopBar, SideNav, type Mode, type View } from "./Nav";
 import BroditaChat from "./BroditaChat";
 import { Card, CardHeader, StatCard, Pill, Donut, AreaChart, ProgressRow } from "./ui";
@@ -22,7 +24,7 @@ import {
   type Client, type KpiRow, type StageId, type TaskStatus, type AgentStatusValue,
 } from "@/lib/data";
 
-const CLIENT_SCOPED = new Set<View>(["pipeline", "agentes", "metricas"]);
+const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "agentes", "metricas"]);
 
 function fmt(v: number | null | undefined) {
   return v == null ? "—" : v.toLocaleString("es-AR");
@@ -56,6 +58,7 @@ function AppInner() {
     taskStatusByClient?: Record<string, Record<string, TaskStatus>>;
     agentStatusByClient?: Record<string, Record<string, { status: AgentStatusValue; autonomy: number; resp: number }>>;
     kpisByClient?: Record<string, KpiRow[]>;
+    crmByClient?: Record<string, Oportunidad[]>;
   }>({}), []);
 
   const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
@@ -77,13 +80,15 @@ function AppInner() {
     () => persisted.kpisByClient ?? Object.fromEntries(Object.entries(SEED_KPIS))
   );
 
+  const [crmByClient, setCrmByClient] = useState<Record<string, Oportunidad[]>>(() => persisted.crmByClient ?? {});
+
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, agentStatusByClient, kpisByClient }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient }));
     } catch {
       // localStorage no disponible (modo privado, cuota llena) — la app sigue funcionando en memoria.
     }
-  }, [clients, taskStatusByClient, agentStatusByClient, kpisByClient]);
+  }, [clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient]);
 
   const client = clients.find((c) => c.id === selectedClientId)!;
   const taskStatus = taskStatusByClient[selectedClientId] || {};
@@ -184,6 +189,12 @@ function AppInner() {
               taskCompletion={taskCompletion}
               latest={latest}
               onJumpToAgent={(stage) => { setView("agentes"); setAgentFilter(stage); }}
+            />
+          )}
+          {view === "crm" && (
+            <Crm
+              ops={crmByClient[selectedClientId] ?? []}
+              onChange={(ops) => setCrmByClient((prevState) => ({ ...prevState, [selectedClientId]: ops }))}
             />
           )}
           {view === "equipo" && (
