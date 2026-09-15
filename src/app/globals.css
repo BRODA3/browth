@@ -1,37 +1,60 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0f0f0f;
-  --panel: #151515;
-  --panel-raised: #1b1b1b;
-  --panel-raised-2: #222222;
+  /* Superficies — escala de profundidad, de más oscura a más elevada */
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --surface-3: #242424;
+
+  /* Tinta */
   --ink: #ffffff;
-  --ink-soft: #bfbfbf;
-  --ink-faint: #7a7a7a;
-  --border: #2a2a2a;
-  --border-strong: #3d3d3d;
+  --ink-soft: #a1a1a1;
+  --ink-faint: #6b6b6b;
+
+  /* Bordes — sutiles, sobre la superficie, no líneas duras */
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+
+  /* Marca */
   --accent: #c8f542;
-  --accent-ink: #141414;
+  --accent-dim: #9ec72f;
+  --accent-ink: #0f1401;
+
+  /* Etapas del embudo */
   --get: #c8f542;
   --convert: #4fd18a;
   --keep: #38b79e;
   --grow: #8a6fe0;
-  --good: #39d98a;
-  --warn: #ffd23f;
-  --critical: #ff5c5c;
+
+  /* Semántica */
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --critical: #f87171;
+
+  /* Radios */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+
+  /* Sombras */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 18px 48px -20px rgba(0, 0, 0, 0.9);
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-panel: var(--panel);
-  --color-panel-raised: var(--panel-raised);
-  --color-panel-raised-2: var(--panel-raised-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-ink-faint: var(--ink-faint);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
   --color-accent-ink: var(--accent-ink);
   --color-get: var(--get);
   --color-convert: var(--convert);
@@ -42,6 +65,7 @@
   --color-critical: var(--critical);
   --font-display: var(--font-archivo);
   --font-sans: var(--font-inter);
+  --radius-card: var(--r-lg);
 }
 
 * { box-sizing: border-box; }
@@ -55,21 +79,45 @@ html, body {
 
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 42px 42px;
-  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
 }
 
 h1, h2, h3, .display {
   font-family: var(--font-display), system-ui, sans-serif;
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   text-wrap: balance;
 }
 
 .tabular { font-variant-numeric: tabular-nums; }
 
-::selection { background: var(--accent); color: #141414; }
+/* Etiqueta de sección: mayúsculas chiquitas y espaciadas, como en el referente */
+.eyebrow {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+}
+
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+/* Scrollbars discretas */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.16); background-clip: content-box; }
+
+input, textarea, select, button { font-family: inherit; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

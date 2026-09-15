@@ -8,8 +8,9 @@ import NorthStar from "./NorthStar";
 import BusinessCase from "./BusinessCase";
 import EstrategiaContenido from "./EstrategiaContenido";
 import PlanContenido from "./PlanContenido";
-import { ModeSwitch, SideNav, type Mode, type View } from "./Nav";
+import { TopBar, SideNav, type Mode, type View } from "./Nav";
 import BroditaChat from "./BroditaChat";
+import { Card, CardHeader, StatCard, Pill, Donut, AreaChart, ProgressRow } from "./ui";
 import { BrodaProvider, useBroda } from "./BrodaContext";
 import { Editable } from "./doc";
 import {
@@ -136,7 +137,7 @@ function AppInner() {
 
   return (
     <div className="min-h-screen">
-      <ModeSwitch mode={mode} onSetMode={(m) => { setMode(m); setView(m === "broda" ? "northstar" : "pipeline"); }} />
+      <TopBar mode={mode} view={view} onSetMode={(m) => { setMode(m); setView(m === "broda" ? "northstar" : "pipeline"); }} />
       <div className="flex">
         <SideNav
           mode={mode}
@@ -147,15 +148,20 @@ function AppInner() {
           onSelectClient={(id) => { setSelectedClientId(id); setOpenZone(null); }}
           onAddClient={addClient}
         />
-        <main className={`flex-1 min-w-0 px-10 py-10 pb-24 ${scoped ? "max-w-[1180px]" : "max-w-[880px]"}`}>
+        <main className={`flex-1 min-w-0 px-8 py-8 pb-24 ${scoped ? "max-w-[1240px]" : "max-w-[900px]"}`}>
           {scoped && (
-            <div className="flex items-baseline justify-between flex-wrap gap-2.5 mb-6">
-              <div>
-                <h1 className="text-3xl m-0">{client.name}</h1>
-                <div className="text-ink-soft text-[13px]">{client.industry}</div>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-7">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <span className="w-11 h-11 rounded-full bg-accent text-accent-ink flex items-center justify-center font-display font-black text-[17px] shrink-0">
+                  {client.name.charAt(0)}
+                </span>
+                <div className="min-w-0">
+                  <h1 className="text-[26px] leading-none m-0 tracking-tight truncate">{client.name}</h1>
+                  <div className="text-ink-faint text-[12.5px] mt-1.5">{client.industry}</div>
+                </div>
               </div>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-display text-[10px] font-extrabold uppercase tracking-wider border border-border-strong text-ink-soft">
-                {client.tier}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-display text-[10px] font-extrabold uppercase tracking-wider border border-border-strong text-ink-soft">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent" /> {client.tier}
               </span>
             </div>
           )}
@@ -268,30 +274,30 @@ function Pipeline({
 }) {
   const zone = openZone ? zoneOf(openZone) : null;
   return (
-    <>
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
-        <h2 className="text-xl m-0 mb-0.5">El embudo, en un solo gráfico</h2>
-        <p className="text-ink-soft text-[12.5px] mb-3.5 max-w-[75ch]">
-          Tocá cualquier tramo — Acquire, Activate, Convert, Keep, Up-Sell, Next-Sell, Cross-Sell o Referrals — y se abre el framework con sus tareas fijas, agentes y estado en esta cuenta.
-        </p>
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader
+          title="El embudo, en un solo gráfico"
+          sub="Tocá cualquier tramo — Acquire, Activate, Convert, Keep, Up-Sell, Next-Sell, Cross-Sell o Referrals — y se abre el framework con sus tareas fijas, agentes y estado en esta cuenta."
+        />
         <FunnelChart completions={zoneCompletions} openZone={openZone} onSelect={(id) => setOpenZone(openZone === id ? null : id)} />
-      </div>
+      </Card>
 
       {zone && (
-        <div className="rounded-xl border-t-[3px] bg-panel-raised shadow-lg p-5 mb-4 border-x border-b border-border" style={{ borderTopColor: zone.color }}>
-          <div className="flex justify-between items-start gap-3.5 mb-1">
-            <div>
-              <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint">
-                {stageOf(zone.stage).name} · {stageOf(zone.stage).subtitle}
-              </div>
-              <h2 className="text-xl m-0" style={{ color: zone.color }}>{zone.label}</h2>
+        <Card className="border-t-[3px]" >
+          <div className="flex justify-between items-start gap-3.5 mb-4 -mt-1" style={{ boxShadow: `inset 0 3px 0 -1px ${zone.color}` }}>
+            <div className="pt-3">
+              <div className="eyebrow">{stageOf(zone.stage).name} · {stageOf(zone.stage).subtitle}</div>
+              <h2 className="text-[22px] m-0 mt-1 normal-case tracking-tight" style={{ color: zone.color }}>{zone.label}</h2>
             </div>
-            <div className="text-right font-extrabold text-[30px] leading-none" style={{ color: zone.color }}>
-              {zoneCompletions[zone.id]?.pct}<span className="text-base">%</span>
-              <div className="text-[10.5px] text-ink-faint font-medium mt-0.5">{zoneCompletions[zone.id]?.done}/{zoneCompletions[zone.id]?.total} tareas</div>
+            <div className="text-right pt-3">
+              <div className="tabular font-extrabold text-[32px] leading-none tracking-tight" style={{ color: zone.color }}>
+                {zoneCompletions[zone.id]?.pct}<span className="text-[18px]">%</span>
+              </div>
+              <div className="text-[11px] text-ink-faint mt-1">{zoneCompletions[zone.id]?.done}/{zoneCompletions[zone.id]?.total} tareas</div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.1fr_0.9fr] gap-4.5 mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.1fr_0.9fr] gap-6">
             <div>
               <ColH>Tareas fijas</ColH>
               <table className="w-full border-collapse">
@@ -335,51 +341,60 @@ function Pipeline({
               <ColH>Stack / APIs</ColH>
               <div className="flex flex-col gap-1.5 items-start">
                 {STACK[zone.stage].map((s) => (
-                  <span key={s} className="text-[11px] font-semibold px-2.5 py-1 rounded-md border" style={{ borderColor: `${zone.color}55`, color: zone.color }}>{s}</span>
+                  <span key={s} className="text-[11px] font-semibold px-2.5 py-1.5 rounded-[var(--r-sm)] border" style={{ borderColor: `${zone.color}44`, color: zone.color, background: `${zone.color}0d` }}>{s}</span>
                 ))}
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
-        <h2 className="text-xl m-0 mb-0.5">Cobertura por motor</h2>
-        <p className="text-ink-soft text-[12.5px] mb-3">Tareas completadas y agentes activos por etapa.</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {STAGES.map((s) => {
-            const comp = taskCompletion(tasksForStage(s.id));
-            const ad = agentAdoptionByStage(s.id);
-            return (
-              <div key={s.id} className="border border-border rounded-lg p-3" style={{ borderTopColor: s.color, borderTopWidth: 3 }}>
-                <div className="font-display font-extrabold text-sm uppercase" style={{ color: s.color }}>{s.name}</div>
-                <div className="text-[11px] text-ink-soft mt-1">{comp.done}/{comp.total} tareas · {ad.active}/{ad.total} agentes</div>
-              </div>
-            );
-          })}
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
+        <Card>
+          <CardHeader title="Cobertura por motor" sub="Tareas del playbook completadas en esta cuenta." />
+          <div className="flex flex-col gap-3.5">
+            {STAGES.map((s) => {
+              const comp = taskCompletion(tasksForStage(s.id));
+              return <ProgressRow key={s.id} label={s.name} pct={comp.pct} color={s.color} meta={`${comp.done}/${comp.total} tareas`} />;
+            })}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Agentes activos" sub="Agentes en estado Activo sobre el total de cada motor." />
+          <div className="flex flex-col gap-3.5">
+            {STAGES.map((s) => {
+              const ad = agentAdoptionByStage(s.id);
+              const pct = ad.total ? Math.round((ad.active / ad.total) * 100) : 0;
+              return <ProgressRow key={s.id} label={s.name} pct={pct} color={s.color} meta={`${ad.active}/${ad.total} agentes`} />;
+            })}
+          </div>
+          {latest && <p className="text-[11px] text-ink-faint mt-5 pt-4 border-t border-border">Último período cargado: {latest.period}</p>}
+        </Card>
       </div>
-      {latest && (
-        <p className="text-[11px] text-ink-faint">Último período cargado: {latest.period}</p>
-      )}
-    </>
+    </div>
   );
 }
 
 function ColH({ children }: { children: React.ReactNode }) {
-  return <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">{children}</div>;
+  return <div className="eyebrow mb-3">{children}</div>;
 }
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="text-left font-display font-extrabold text-[10px] uppercase tracking-wide text-ink-faint pb-2 border-b border-border">{children}</th>;
+  return <th className="text-left font-display font-extrabold text-[10px] uppercase tracking-[0.08em] text-ink-faint px-3 py-2.5 border-b border-border first:pl-5 last:pr-5">{children}</th>;
 }
 function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`py-2 pr-2 border-b border-border text-[13px] align-middle ${className}`}>{children}</td>;
+  return <td className={`px-3 py-3 border-b border-border text-[13px] text-ink-soft align-middle first:pl-5 last:pr-5 ${className}`}>{children}</td>;
 }
 function StatusSelect({ value, onChange }: { value: TaskStatus; onChange: (v: TaskStatus) => void }) {
-  const color = value === "Hecho" ? "var(--good)" : value === "En curso" ? "var(--accent)" : value === "Bloqueado" ? "var(--critical)" : "var(--border-strong)";
+  const color = value === "Hecho" ? "var(--good)" : value === "En curso" ? "var(--accent)" : value === "Bloqueado" ? "var(--critical)" : "var(--ink-faint)";
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value as TaskStatus)} className="border rounded-md px-1.5 py-1 text-[11.5px] bg-panel" style={{ borderColor: color, color }}>
-      {STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as TaskStatus)}
+      className="border rounded-full px-2.5 py-1 text-[11px] font-semibold bg-transparent outline-none cursor-pointer"
+      style={{ borderColor: `color-mix(in srgb, ${color} 45%, transparent)`, color, background: `color-mix(in srgb, ${color} 10%, transparent)` }}
+    >
+      {STATUS_OPTIONS.map((o) => <option key={o} style={{ background: "var(--surface)", color: "var(--ink)" }}>{o}</option>)}
     </select>
   );
 }
@@ -389,12 +404,12 @@ function StatusSelect({ value, onChange }: { value: TaskStatus; onChange: (v: Ta
 function Mapa({ taskCompletion }: { taskCompletion: (tasks: { id: string }[]) => { done: number; total: number; pct: number } }) {
   return (
     <>
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
+      <div className="bg-surface border border-border rounded-[var(--r-lg)] p-5 mb-4">
         <h2 className="text-xl m-0 mb-0.5">Arquitectura del embudo</h2>
         <p className="text-ink-soft text-[12.5px]">El mismo embudo Get→Convert→Keep→Grow, desplegado como mapa de proceso: qué se hace, qué se prueba y con qué API/CRM corre cada etapa.</p>
       </div>
       {STAGES.map((s) => (
-        <div key={s.id} className="rounded-xl bg-panel-raised shadow-lg p-5 mb-4 border-l-[3px] border-y border-r border-border" style={{ borderLeftColor: s.color }}>
+        <div key={s.id} className="rounded-xl bg-surface-2 shadow-lg p-5 mb-4 border-l-[3px] border-y border-r border-border" style={{ borderLeftColor: s.color }}>
           <div className="flex items-center gap-2.5 mb-0.5">
             <span className="w-3.5 h-3.5 rounded-sm" style={{ background: s.color }} />
             <h2 className="text-xl m-0" style={{ color: s.color }}>{s.name} — {s.subtitle}</h2>
@@ -454,7 +469,7 @@ function Playbook({
         ))}
       </div>
       {stagesToShow.map((s) => (
-        <div key={s.id} className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
+        <div key={s.id} className="bg-surface border border-border rounded-[var(--r-lg)] p-5 mb-4">
           <div className="flex items-center gap-2.5 mb-0.5">
             <span className="w-3.5 h-3.5 rounded-sm" style={{ background: s.color }} />
             <h2 className="text-xl m-0" style={{ color: s.color }}>{s.name} — {s.subtitle}</h2>
@@ -470,7 +485,7 @@ function Playbook({
                   <tr key={t.id}>
                     <Td className="font-semibold">{t.name}</Td>
                     <Td className="text-[10.5px] text-ink-soft">{t.cadence}</Td>
-                    <Td><span className="inline-block px-1.5 py-0.5 rounded-md bg-panel border border-border text-[11px]">{t.role}</span></Td>
+                    <Td><span className="inline-block px-1.5 py-0.5 rounded-md bg-surface border border-border text-[11px]">{t.role}</span></Td>
                     <Td>{agent ? <button onClick={() => onJumpToAgent(s.id)} className="text-[11.5px] font-semibold text-accent underline underline-offset-2">{agent.name}</button> : "—"}</Td>
                     <Td><StatusSelect value={st} onChange={(v) => setTaskStatus(t.id, v)} /></Td>
                   </tr>
@@ -508,7 +523,7 @@ function Agentes({
   const list = filter ? AGENTS.filter((a) => a.stage === filter) : AGENTS;
   return (
     <>
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
+      <div className="bg-surface border border-border rounded-[var(--r-lg)] p-5 mb-4">
         <h2 className="text-xl m-0 mb-0.5">Cómo se construye un agente</h2>
         <p className="text-ink-soft text-[12.5px] mb-3">Receta fija de 7 pasos, la ejecuta AI Agent Ops junto al responsable de la etapa: Disparador → Fuentes → Entregable → Límites → Integración → Instancia → Métrica.</p>
       </div>
@@ -536,7 +551,7 @@ function AgentCard({
   const [copied, setCopied] = useState(false);
 
   return (
-    <div id={`agent-${a.id}`} className="border border-border rounded-lg p-4 mb-2.5 bg-panel-raised">
+    <div id={`agent-${a.id}`} className="border border-border rounded-[var(--r-lg)] p-4 mb-3 bg-surface">
       <div className="flex justify-between items-start gap-2.5 mb-2.5">
         <div className="flex items-center gap-2">
           <h3 className="text-base m-0 normal-case tracking-normal font-display font-bold">{a.name}</h3>
@@ -561,17 +576,17 @@ function AgentCard({
       </div>
       <div className="flex gap-2.5 flex-wrap items-center pt-2.5 border-t border-border">
         <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Estado
-          <select value={status.status} onChange={(e) => setAgentField(a.id, "status", e.target.value)} className="border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1 text-[11.5px]">
+          <select value={status.status} onChange={(e) => setAgentField(a.id, "status", e.target.value)} className="border border-border-strong rounded-md bg-surface text-ink px-1.5 py-1 text-[11.5px]">
             {AGENT_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
         </label>
         <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Autonomía %
-          <input type="number" min={0} max={100} value={status.autonomy} onChange={(e) => setAgentField(a.id, "autonomy", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1" />
+          <input type="number" min={0} max={100} value={status.autonomy} onChange={(e) => setAgentField(a.id, "autonomy", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-surface text-ink px-1.5 py-1" />
         </label>
         <label className="text-[10.5px] text-ink-faint flex flex-col gap-1">Resp. (min)
-          <input type="number" min={0} value={status.resp} onChange={(e) => setAgentField(a.id, "resp", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-panel text-ink px-1.5 py-1" />
+          <input type="number" min={0} value={status.resp} onChange={(e) => setAgentField(a.id, "resp", Number(e.target.value))} className="w-16 border border-border-strong rounded-md bg-surface text-ink px-1.5 py-1" />
         </label>
-        <span className="text-[10.5px] text-ink-soft ml-auto">Construye: <span className="px-1.5 py-0.5 rounded-md bg-panel border border-border">{a.builder}</span></span>
+        <span className="text-[10.5px] text-ink-soft ml-auto">Construye: <span className="px-1.5 py-0.5 rounded-md bg-surface border border-border">{a.builder}</span></span>
       </div>
 
       <div className="pt-2.5 mt-2.5 border-t border-border">
@@ -580,10 +595,10 @@ function AgentCard({
         </button>
         {showPrompt && (
           <div className="mt-2 relative">
-            <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-ink-soft bg-panel border border-border rounded-md p-3 max-h-64 overflow-y-auto font-sans">{a.systemPrompt}</pre>
+            <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-ink-soft bg-surface border border-border rounded-md p-3 max-h-64 overflow-y-auto font-sans">{a.systemPrompt}</pre>
             <button
               onClick={() => { navigator.clipboard?.writeText(a.systemPrompt); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-              className="absolute top-2 right-2 text-[9.5px] font-display font-extrabold uppercase px-2 py-1 rounded-md bg-panel-raised-2 border border-border-strong text-ink-soft"
+              className="absolute top-2 right-2 text-[9.5px] font-display font-extrabold uppercase px-2 py-1 rounded-md bg-surface-3 border border-border-strong text-ink-soft"
             >
               {copied ? "Copiado ✓" : "Copiar"}
             </button>
@@ -625,8 +640,8 @@ function InboundQualifierConsole() {
     <div className="pt-3 mt-3 border-t border-border">
       <div className="text-[10.5px] font-display font-extrabold uppercase tracking-wide text-good mb-2">Probar agente en vivo</div>
       <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_auto] gap-2 mb-2">
-        <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Mensaje entrante del lead…" className="border border-border-strong rounded-md bg-panel text-ink px-2.5 py-1.5 text-xs" />
-        <input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Nombre del lead" className="border border-border-strong rounded-md bg-panel text-ink px-2.5 py-1.5 text-xs" />
+        <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Mensaje entrante del lead…" className="border border-border-strong rounded-md bg-surface text-ink px-2.5 py-1.5 text-xs" />
+        <input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Nombre del lead" className="border border-border-strong rounded-md bg-surface text-ink px-2.5 py-1.5 text-xs" />
         <button onClick={run} disabled={loading} className="bg-good text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2 rounded-md disabled:opacity-50">
           {loading ? "Calificando…" : "Enviar"}
         </button>
@@ -638,11 +653,11 @@ function InboundQualifierConsole() {
       )}
       {result && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[12px]">
-          <div className="border border-border rounded-md p-2.5 bg-panel">
+          <div className="border border-border rounded-md p-2.5 bg-surface">
             <div className="text-[9.5px] uppercase tracking-wide text-ink-faint mb-1">Respuesta de Brodita</div>
             <div className="text-ink-soft">{result.reply}</div>
           </div>
-          <div className="border border-border rounded-md p-2.5 bg-panel">
+          <div className="border border-border rounded-md p-2.5 bg-surface">
             <div className="text-[9.5px] uppercase tracking-wide text-ink-faint mb-1">Veredicto</div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className={`w-2 h-2 rounded-full ${result.qualified === true ? "bg-good" : result.qualified === false ? "bg-critical" : "bg-warn"}`} />
@@ -681,131 +696,170 @@ function Metricas({
   onAddPeriod: (row: KpiRow) => void;
 }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [showForm, setShowForm] = useState(false);
+
   function delta(cur: number | null, p: number | null) {
     if (cur == null || p == null || p === 0) return null;
     return ((cur - p) / Math.abs(p)) * 100;
   }
+
+  const metricLabel = KPI_FIELDS.find((f) => f.k === kpiMetric)?.l ?? "";
+  const serie = kpis.map((r) => (r as unknown as Record<string, number | null>)[kpiMetric]);
+  const embudo = latest
+    ? [
+        { label: "Leads", value: latest.leads ?? 0, color: "var(--get)" },
+        { label: "Reuniones", value: latest.meetings ?? 0, color: "var(--convert)" },
+        { label: "Propuestas", value: latest.proposals ?? 0, color: "var(--keep)" },
+        { label: "Cierres", value: latest.closes ?? 0, color: "var(--grow)" },
+      ]
+    : [];
+
+  if (!latest) {
+    return (
+      <Card>
+        <CardHeader title="Sin datos todavía" sub="Cargá el primer período para ver los KPIs, la tendencia y la composición del embudo." />
+        <PeriodoForm draft={draft} setDraft={setDraft} onAddPeriod={onAddPeriod} />
+      </Card>
+    );
+  }
+
   return (
-    <>
-      {latest ? (
-        <div className="flex gap-3 flex-wrap mb-4">
-          {[
-            ["Revenue", latest.revenue, prev?.revenue ?? null, ""],
-            ["Cierres", latest.closes, prev?.closes ?? null, ""],
-            ["Health score", latest.healthScore, prev?.healthScore ?? null, ""],
-            ["NRR", latest.nrr, prev?.nrr ?? null, "%"],
-            ["Churn", latest.churnRate, prev?.churnRate ?? null, "%"],
-          ].map(([label, v, p, unit]) => {
-            const d = delta(v as number | null, p as number | null);
-            return (
-              <div key={label as string} className="flex-1 min-w-[130px] bg-panel-raised border border-border rounded-lg p-3">
-                <div className="text-[10px] uppercase tracking-wide text-ink-faint">{label as string}</div>
-                <div className="tabular font-extrabold text-2xl mt-0.5">{fmt(v as number)}{unit as string}</div>
-                <div className={`text-[11px] mt-0.5 ${d == null ? "text-ink-faint" : d > 0.5 ? "text-good" : d < -0.5 ? "text-critical" : "text-ink-faint"}`}>
-                  {d == null ? "primer período" : `${d > 0 ? "+" : ""}${d.toFixed(1)}% vs. anterior`}
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Revenue" value={fmt(latest.revenue)} delta={delta(latest.revenue, prev?.revenue ?? null)} icon="$" />
+        <StatCard label="Cierres" value={fmt(latest.closes)} delta={delta(latest.closes, prev?.closes ?? null)} icon="✓" />
+        <StatCard label="Health score" value={fmt(latest.healthScore)} delta={delta(latest.healthScore, prev?.healthScore ?? null)} icon="◉" />
+        <StatCard label="NRR" value={fmt(latest.nrr)} unit="%" delta={delta(latest.nrr, prev?.nrr ?? null)} accent="var(--accent)" icon="%" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-4">
+        <Card>
+          <CardHeader
+            title="Tendencia"
+            sub={`${metricLabel} por período · ${kpis.length} períodos cargados`}
+            right={
+              <select
+                value={kpiMetric}
+                onChange={(e) => setKpiMetric(e.target.value)}
+                className="border border-border-strong rounded-[var(--r-md)] bg-bg text-ink px-3 py-1.5 text-[12px] outline-none focus:border-accent"
+              >
+                {KPI_FIELDS.map((f) => <option key={f.k} value={f.k}>{f.l}</option>)}
+              </select>
+            }
+          />
+          <AreaChart
+            points={serie}
+            labels={kpis.map((r) => r.period.slice(2))}
+            color="var(--accent)"
+            height={190}
+          />
+        </Card>
+
+        <Card>
+          <CardHeader title="Embudo del período" sub={latest.period} />
+          <div className="flex items-center gap-5">
+            <Donut
+              segments={embudo}
+              centerValue={fmt(latest.leads)}
+              centerLabel="Leads"
+              size={150}
+            />
+            <div className="flex flex-col gap-2.5 min-w-0 flex-1">
+              {embudo.map((s) => (
+                <div key={s.label} className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
+                  <span className="text-[12px] text-ink-soft flex-1 truncate">{s.label}</span>
+                  <span className="tabular text-[13px] font-bold">{fmt(s.value)}</span>
                 </div>
+              ))}
+              <div className="flex items-center gap-2 pt-2.5 mt-0.5 border-t border-border">
+                <span className="text-[11.5px] text-ink-faint flex-1">Cierre sobre leads</span>
+                <span className="tabular text-[13px] font-bold text-accent">
+                  {latest.leads ? (((latest.closes ?? 0) / latest.leads) * 100).toFixed(1) : "—"}%
+                </span>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="text-ink-faint text-[12.5px] italic mb-4">Todavía no hay períodos cargados. Agregá el primero abajo.</p>
-      )}
-
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
-        <h2 className="text-xl m-0 mb-3">Tendencia</h2>
-        <select value={kpiMetric} onChange={(e) => setKpiMetric(e.target.value)} className="border border-border-strong rounded-md bg-panel text-ink px-2 py-1 text-[12px] mb-3">
-          {KPI_FIELDS.map((f) => <option key={f.k} value={f.k}>{f.l}</option>)}
-        </select>
-        {kpis.length > 0 ? <TrendChart rows={kpis} metric={kpiMetric} /> : <p className="text-ink-faint text-xs italic">Sin datos todavía.</p>}
+            </div>
+          </div>
+        </Card>
       </div>
 
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
-        <h2 className="text-xl m-0 mb-0.5">Cargar período</h2>
-        <p className="text-ink-soft text-[12.5px] mb-3">Un registro por mes. Sobrescribe si ya existe.</p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-3">
-          <label className="flex flex-col gap-1 text-[10.5px] text-ink-faint">Período (AAAA-MM)
-            <input value={draft.period || ""} onChange={(e) => setDraft((d) => ({ ...d, period: e.target.value }))} placeholder="2026-09" className="border border-border-strong rounded-md bg-panel text-ink px-2 py-1.5" />
-          </label>
-          {KPI_FIELDS.map((f) => (
-            <label key={f.k} className="flex flex-col gap-1 text-[10.5px] text-ink-faint">{f.l}
-              <input type="number" step="any" value={draft[f.k] || ""} onChange={(e) => setDraft((d) => ({ ...d, [f.k]: e.target.value }))} className="border border-border-strong rounded-md bg-panel text-ink px-2 py-1.5" />
-            </label>
-          ))}
+      <Card padded={false}>
+        <div className="flex items-center justify-between gap-4 px-5 pt-5 pb-4">
+          <div>
+            <h2 className="text-[17px] leading-tight m-0 normal-case tracking-tight font-display font-extrabold">Histórico</h2>
+            <p className="text-[12.5px] text-ink-faint mt-1">Un registro por período. Cargar de nuevo un período lo sobrescribe.</p>
+          </div>
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="shrink-0 bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors"
+          >
+            {showForm ? "Cerrar" : "+ Período"}
+          </button>
         </div>
-        <button
-          onClick={() => {
-            if (!/^\d{4}-\d{2}$/.test(draft.period || "")) return;
-            const row: KpiRow = { period: draft.period } as KpiRow;
-            KPI_FIELDS.forEach((f) => { (row as unknown as Record<string, number | null>)[f.k] = draft[f.k] ? Number(draft[f.k]) : null; });
-            onAddPeriod(row);
-            setDraft({});
-          }}
-          className="bg-accent text-accent-ink font-display font-extrabold uppercase text-xs px-4 py-2 rounded-md"
-        >
-          Guardar período
-        </button>
-      </div>
 
-      {kpis.length > 0 && (
-        <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 overflow-x-auto">
-          <h2 className="text-xl m-0 mb-3">Histórico</h2>
+        {showForm && (
+          <div className="px-5 pb-5 border-b border-border">
+            <PeriodoForm draft={draft} setDraft={setDraft} onAddPeriod={(r) => { onAddPeriod(r); setShowForm(false); }} />
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
           <table className="w-full border-collapse tabular">
-            <thead><tr><Th>Período</Th>{KPI_FIELDS.map((f) => <Th key={f.k}>{f.l}</Th>)}</tr></thead>
+            <thead>
+              <tr>
+                <Th>Período</Th>
+                {KPI_FIELDS.map((f) => <Th key={f.k}>{f.l}</Th>)}
+              </tr>
+            </thead>
             <tbody>
-              {kpis.map((r) => (
-                <tr key={r.period}>
-                  <Td>{r.period}</Td>
+              {[...kpis].reverse().map((r) => (
+                <tr key={r.period} className="hover:bg-surface-2/60 transition-colors">
+                  <Td className="font-semibold text-ink">{r.period}</Td>
                   {KPI_FIELDS.map((f) => <Td key={f.k}>{fmt((r as unknown as Record<string, number | null>)[f.k])}</Td>)}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
-    </>
+      </Card>
+    </div>
   );
 }
 
-function TrendChart({ rows, metric }: { rows: KpiRow[]; metric: string }) {
-  const w = 640, h = 200, padL = 44, padR = 14, padT = 14, padB = 24;
-  const vals = rows.map((r) => (r as unknown as Record<string, number | null>)[metric]);
-  const known = vals.filter((v): v is number => v != null);
-  if (known.length === 0) return <p className="text-ink-faint text-xs italic">Sin datos para esta métrica.</p>;
-  const min = Math.min(...known, 0), max = Math.max(...known, 1);
-  const range = max - min || 1;
-  const stepX = (w - padL - padR) / Math.max(1, rows.length - 1);
-  const pts: [number, number][] = [];
-  rows.forEach((r, i) => {
-    const v = vals[i];
-    if (v == null) return;
-    const x = padL + i * stepX;
-    const y = padT + (h - padT - padB) - ((v - min) / range) * (h - padT - padB);
-    pts.push([x, y]);
-  });
-  const path = pts.length ? "M" + pts.map((p) => p.join(",")).join(" L") : "";
-  const area = pts.length ? `${path} L${pts[pts.length - 1][0]},${padT + (h - padT - padB)} L${pts[0][0]},${padT + (h - padT - padB)} Z` : "";
+function PeriodoForm({
+  draft, setDraft, onAddPeriod,
+}: {
+  draft: Record<string, string>; setDraft: (f: (d: Record<string, string>) => Record<string, string>) => void;
+  onAddPeriod: (row: KpiRow) => void;
+}) {
+  const field = "border border-border-strong rounded-[var(--r-md)] bg-bg text-ink px-2.5 py-2 text-[13px] outline-none focus:border-accent";
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto">
-      {[0, 1, 2, 3].map((g) => {
-        const y = padT + (h - padT - padB) - (g / 3) * (h - padT - padB);
-        const val = min + (g / 3) * range;
-        return (
-          <g key={g}>
-            <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={padL - 6} y={y + 3} textAnchor="end" fontSize={9} fill="var(--ink-faint)">{Math.round(val)}</text>
-          </g>
-        );
-      })}
-      <path d={area} fill="var(--convert)" opacity={0.12} />
-      <path d={path} fill="none" stroke="var(--convert)" strokeWidth={2} strokeLinejoin="round" />
-      {pts.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={i === pts.length - 1 ? 4.5 : 2.5} fill={i === pts.length - 1 ? "var(--accent)" : "var(--convert)"} />
-      ))}
-      {rows.map((r, i) => (
-        <text key={r.period} x={padL + i * stepX} y={h - 6} textAnchor="middle" fontSize={9} fill="var(--ink-faint)">{r.period.slice(2)}</text>
-      ))}
-    </svg>
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <label className="flex flex-col gap-1.5 text-[10.5px] text-ink-faint">
+          Período (AAAA-MM)
+          <input value={draft.period || ""} onChange={(e) => setDraft((d) => ({ ...d, period: e.target.value }))} placeholder="2026-09" className={field} />
+        </label>
+        {KPI_FIELDS.map((f) => (
+          <label key={f.k} className="flex flex-col gap-1.5 text-[10.5px] text-ink-faint">
+            {f.l}
+            <input type="number" step="any" value={draft[f.k] || ""} onChange={(e) => setDraft((d) => ({ ...d, [f.k]: e.target.value }))} className={field} />
+          </label>
+        ))}
+      </div>
+      <button
+        onClick={() => {
+          if (!/^\d{4}-\d{2}$/.test(draft.period || "")) return;
+          const row: KpiRow = { period: draft.period } as KpiRow;
+          KPI_FIELDS.forEach((f) => { (row as unknown as Record<string, number | null>)[f.k] = draft[f.k] ? Number(draft[f.k]) : null; });
+          onAddPeriod(row);
+          setDraft(() => ({}));
+        }}
+        className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors"
+      >
+        Guardar período
+      </button>
+    </>
   );
 }
 
@@ -815,7 +869,7 @@ function Equipo({ client, onUpdateOwners }: { client: Client; onUpdateOwners: (o
   const [owners, setOwners] = useState(client.owners);
   return (
     <>
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
+      <div className="bg-surface border border-border rounded-[var(--r-lg)] p-5 mb-4">
         <h2 className="text-xl m-0 mb-0.5">Roles fijos</h2>
         <p className="text-ink-soft text-[12.5px] mb-3">7 roles cubren el ciclo completo Get→Convert→Keep→Grow. En equipos chicos, una persona combina varios.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -831,14 +885,14 @@ function Equipo({ client, onUpdateOwners }: { client: Client; onUpdateOwners: (o
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5 mb-4">
+      <div className="bg-surface border border-border rounded-[var(--r-lg)] p-5 mb-4">
         <h2 className="text-xl m-0 mb-3">Cobertura según tamaño de equipo</h2>
         <table className="w-full border-collapse">
           <thead><tr><Th>Tamaño</Th><Th>Combinación de roles</Th></tr></thead>
           <tbody>
             {COVERAGE.map((c) => (
               <tr key={c.size}>
-                <Td><span className="px-1.5 py-0.5 rounded-md bg-panel border border-border text-[11px]">{c.size}</span></Td>
+                <Td><span className="px-1.5 py-0.5 rounded-md bg-surface border border-border text-[11px]">{c.size}</span></Td>
                 <Td>{c.combo}</Td>
               </tr>
             ))}
@@ -846,18 +900,18 @@ function Equipo({ client, onUpdateOwners }: { client: Client; onUpdateOwners: (o
         </table>
       </div>
 
-      <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-5">
+      <div className="bg-surface border border-border rounded-[var(--r-lg)] p-5">
         <h2 className="text-xl m-0 mb-0.5">Responsables de esta cuenta</h2>
         <p className="text-ink-soft text-[12.5px] mb-3">Quién lleva {client.name} en cada frente.</p>
         <div className="flex gap-2.5 flex-wrap">
           <label className="flex flex-col gap-1 text-[10.5px] text-ink-faint">Growth Lead
-            <input value={owners.growth} onChange={(e) => setOwners((o) => ({ ...o, growth: e.target.value }))} className="border border-border-strong rounded-md bg-panel text-ink px-2 py-1.5 min-w-[150px]" />
+            <input value={owners.growth} onChange={(e) => setOwners((o) => ({ ...o, growth: e.target.value }))} className="border border-border-strong rounded-md bg-surface text-ink px-2 py-1.5 min-w-[150px]" />
           </label>
           <label className="flex flex-col gap-1 text-[10.5px] text-ink-faint">Closer / AE
-            <input value={owners.sales} onChange={(e) => setOwners((o) => ({ ...o, sales: e.target.value }))} className="border border-border-strong rounded-md bg-panel text-ink px-2 py-1.5 min-w-[150px]" />
+            <input value={owners.sales} onChange={(e) => setOwners((o) => ({ ...o, sales: e.target.value }))} className="border border-border-strong rounded-md bg-surface text-ink px-2 py-1.5 min-w-[150px]" />
           </label>
           <label className="flex flex-col gap-1 text-[10.5px] text-ink-faint">Client Success
-            <input value={owners.success} onChange={(e) => setOwners((o) => ({ ...o, success: e.target.value }))} className="border border-border-strong rounded-md bg-panel text-ink px-2 py-1.5 min-w-[150px]" />
+            <input value={owners.success} onChange={(e) => setOwners((o) => ({ ...o, success: e.target.value }))} className="border border-border-strong rounded-md bg-surface text-ink px-2 py-1.5 min-w-[150px]" />
           </label>
         </div>
         <button onClick={() => onUpdateOwners(owners)} className="mt-3 bg-accent text-accent-ink font-display font-extrabold uppercase text-xs px-4 py-2 rounded-md">Guardar</button>

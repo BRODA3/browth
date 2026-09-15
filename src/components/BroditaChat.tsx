@@ -69,8 +69,8 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
       </button>
 
       {open && (
-        <div className="fixed bottom-[88px] right-5 w-[340px] max-h-[70vh] bg-panel-raised border border-border-strong rounded-2xl shadow-2xl flex flex-col z-[70] overflow-hidden">
-          <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border bg-panel">
+        <div className="fixed bottom-[88px] right-5 w-[340px] max-h-[70vh] bg-surface-2 border border-border-strong rounded-2xl shadow-2xl flex flex-col z-[70] overflow-hidden">
+          <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border bg-surface">
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center font-display font-black text-accent-ink text-[13px]">B</div>
             <div className="flex-1">
               <div className="font-display font-extrabold text-[12px] uppercase">Brodita</div>
@@ -86,7 +86,7 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
                 className={`max-w-[86%] px-2.5 py-2 rounded-xl text-[12.5px] leading-relaxed whitespace-pre-wrap ${
                   m.role === "assistant"
                     ? "self-start bg-accent/10 border border-accent/25 rounded-bl-sm"
-                    : "self-end bg-panel-raised-2 border border-border rounded-br-sm"
+                    : "self-end bg-surface-3 border border-border rounded-br-sm"
                 }`}
               >
                 {m.text}
@@ -95,13 +95,13 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
             {busy && <div className="self-start text-[12px] text-ink-faint italic">Brodita está pensando…</div>}
           </div>
 
-          <div className="flex gap-2 p-3 border-t border-border bg-panel">
+          <div className="flex gap-2 p-3 border-t border-border bg-surface">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder="Preguntale algo a Brodita…"
-              className="flex-1 border border-border-strong rounded-lg bg-panel-raised text-ink px-2.5 py-2 text-[12.5px] outline-none focus:border-accent"
+              className="flex-1 border border-border-strong rounded-lg bg-surface-2 text-ink px-2.5 py-2 text-[12.5px] outline-none focus:border-accent"
             />
             <button onClick={send} disabled={busy} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-3.5 rounded-lg disabled:opacity-50">
               Enviar

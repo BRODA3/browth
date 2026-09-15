@@ -179,7 +179,7 @@ export default function FunnelChart({ completions, openZone, onSelect }: FunnelC
   );
 
   return (
-    <div className="relative rounded-xl border border-border-strong bg-panel-raised overflow-hidden">
+    <div className="relative rounded-xl border border-border-strong bg-surface-2 overflow-hidden">
       {["top-2 left-2 border-t-2 border-l-2", "top-2 right-2 border-t-2 border-r-2", "bottom-2 left-2 border-b-2 border-l-2", "bottom-2 right-2 border-b-2 border-r-2"].map((pos, i) => (
         <div key={i} className={`absolute ${pos} w-4 h-4 border-accent/50 z-10 pointer-events-none`} />
       ))}
@@ -200,7 +200,7 @@ export default function FunnelChart({ completions, openZone, onSelect }: FunnelC
         </div>
         {/* reflejo sobre "piso" virtual */}
         <div
-          className="pointer-events-none mt-1 opacity-25"
+          className="pointer-events-none mt-1 opacity-20 h-16 overflow-hidden"
           style={{
             transform: "scaleY(-1)",
             maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)",

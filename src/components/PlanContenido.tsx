@@ -50,7 +50,7 @@ export default function PlanContenido() {
               <Eyebrow>{m.nombre}</Eyebrow>
               <div className="grid grid-cols-7 gap-px bg-border border border-border">
                 {DOW.map((d) => (
-                  <div key={d} className="bg-panel text-center text-[10px] font-display font-extrabold uppercase tracking-wide text-ink-faint py-2">{d}</div>
+                  <div key={d} className="bg-surface text-center text-[10px] font-display font-extrabold uppercase tracking-wide text-ink-faint py-2">{d}</div>
                 ))}
                 {cells.map((day, i) => {
                   const iso = day ? fechaISO(m.year, m.month, day) : null;
@@ -62,7 +62,7 @@ export default function PlanContenido() {
                         <button
                           key={p.id}
                           onClick={() => setOpenId(p.id)}
-                          className="w-full text-left mt-1 text-[10px] font-semibold px-1.5 py-1 rounded flex items-center gap-1.5 bg-panel-raised border border-transparent hover:border-current"
+                          className="w-full text-left mt-1 text-[10px] font-semibold px-1.5 py-1 rounded flex items-center gap-1.5 bg-surface-2 border border-transparent hover:border-current"
                           style={{ color: CANAL_COLOR[p.canal], boxShadow: p.prioridad ? `inset 2px 0 0 ${CANAL_COLOR[p.canal]}` : undefined }}
                         >
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CANAL_COLOR[p.canal] }} />
@@ -93,7 +93,7 @@ export default function PlanContenido() {
 
       {open && (
         <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-[60] p-5" onClick={(e) => e.target === e.currentTarget && setOpenId(null)}>
-          <div className="bg-panel border border-border-strong max-w-lg w-full p-7 relative">
+          <div className="bg-surface border border-border-strong max-w-lg w-full p-7 relative">
             <button onClick={() => setOpenId(null)} className="absolute top-3 right-4 text-ink-faint hover:text-ink text-lg">✕</button>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2 h-2 rounded-full" style={{ background: CANAL_COLOR[open.canal] }} />

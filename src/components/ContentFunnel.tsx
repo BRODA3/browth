@@ -109,7 +109,7 @@ export default function ContentFunnel() {
       </div>
       <div className="relative py-6 px-2 [perspective:1400px]">
         <div className="cf-float will-change-transform" style={{ transformStyle: "preserve-3d" }}>{scene}</div>
-        <div className="pointer-events-none mt-1 opacity-25" style={{ transform: "scaleY(-1)", maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", filter: "blur(2px)" }}>
+        <div className="pointer-events-none mt-1 opacity-20 h-16 overflow-hidden" style={{ transform: "scaleY(-1)", maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent 70%)", filter: "blur(2px)" }}>
           {scene}
         </div>
       </div>

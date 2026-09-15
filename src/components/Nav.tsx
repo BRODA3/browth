@@ -10,38 +10,47 @@ export type View =
   | "equipo"
   | "pipeline" | "playbooks" | "agentes" | "metricas";
 
-export const BRODA_ITEMS: { id: View; label: string }[] = [
-  { id: "northstar", label: "North Star" },
-  { id: "businesscase", label: "Business Case" },
-  { id: "infra", label: "Infraestructura comercial" },
-  { id: "estrategia", label: "Estrategia de contenido" },
-  { id: "plan", label: "Plan de contenido" },
-  { id: "equipo", label: "Equipo" },
+export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
+  { id: "northstar", label: "North Star", icon: "◎" },
+  { id: "businesscase", label: "Business Case", icon: "▤" },
+  { id: "infra", label: "Infraestructura", icon: "⧗" },
+  { id: "estrategia", label: "Estrategia", icon: "◈" },
+  { id: "plan", label: "Plan de contenido", icon: "▦" },
+  { id: "equipo", label: "Equipo", icon: "◍" },
 ];
 
-export const CLIENTES_ITEMS: { id: View; label: string }[] = [
-  { id: "pipeline", label: "Pipeline" },
-  { id: "playbooks", label: "Playbooks" },
-  { id: "agentes", label: "Agentes IA" },
-  { id: "metricas", label: "Métricas" },
+export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
+  { id: "pipeline", label: "Pipeline", icon: "⧗" },
+  { id: "playbooks", label: "Playbooks", icon: "▤" },
+  { id: "agentes", label: "Agentes IA", icon: "◈" },
+  { id: "metricas", label: "Métricas", icon: "▥" },
 ];
 
-export function ModeSwitch({ mode, onSetMode }: { mode: Mode; onSetMode: (m: Mode) => void }) {
+export const VIEW_LABEL: Record<View, string> = {
+  northstar: "North Star", businesscase: "Business Case", infra: "Infraestructura comercial",
+  estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo",
+  pipeline: "Pipeline", playbooks: "Playbooks", agentes: "Agentes IA", metricas: "Métricas",
+};
+
+export function TopBar({
+  mode, onSetMode, view,
+}: { mode: Mode; onSetMode: (m: Mode) => void; view: View }) {
   const { editMode, setEditMode } = useBroda();
   return (
-    <div className="sticky top-0 z-50 h-14 bg-panel border-b border-border flex items-center px-5 gap-6">
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="w-7 h-7 rounded-lg bg-accent text-accent-ink flex items-center justify-center font-display font-black text-[13px]">B</div>
-        <div className="font-display font-black text-[16px] uppercase tracking-tight">
+    <header className="sticky top-0 z-50 h-16 bg-bg/85 backdrop-blur-xl border-b border-border flex items-center px-5 gap-5">
+      <div className="flex items-center gap-2.5 shrink-0">
+        <div className="w-8 h-8 rounded-[var(--r-sm)] bg-accent text-accent-ink flex items-center justify-center font-display font-black text-[14px]">B</div>
+        <div className="font-display font-black text-[15px] uppercase tracking-tight leading-none">
           BRODA<span className="text-accent">WORLD</span>
         </div>
       </div>
-      <div className="flex items-center gap-1 bg-panel-raised border border-border-strong rounded-full p-1">
+
+      <div className="flex items-center gap-1 bg-surface border border-border rounded-full p-1 shrink-0">
         {(["broda", "clientes"] as Mode[]).map((m) => (
           <button
             key={m}
             onClick={() => onSetMode(m)}
-            className={`font-display font-extrabold uppercase text-[11px] tracking-wide px-4 py-1.5 rounded-full transition-colors ${
+            className={`font-display font-extrabold uppercase text-[10.5px] tracking-wide px-4 py-1.5 rounded-full transition-colors ${
               mode === m ? "bg-accent text-accent-ink" : "text-ink-soft hover:text-ink"
             }`}
           >
@@ -49,18 +58,27 @@ export function ModeSwitch({ mode, onSetMode }: { mode: Mode; onSetMode: (m: Mod
           </button>
         ))}
       </div>
-      {mode === "broda" && (
-        <button
-          onClick={() => setEditMode(!editMode)}
-          className={`flex items-center gap-1.5 font-display font-extrabold uppercase text-[11px] tracking-wide px-3.5 py-1.5 rounded-full border transition-colors ${
-            editMode ? "bg-accent text-accent-ink border-accent" : "text-ink-soft border-border-strong hover:text-ink"
-          }`}
-        >
-          <span>✎</span> {editMode ? "Editando" : "Editar"}
-        </button>
-      )}
-      <div className="ml-auto" />
-    </div>
+
+      <div className="hidden md:flex items-center gap-2 text-[12.5px] text-ink-faint min-w-0">
+        <span className="truncate">{mode === "broda" ? "Broda" : "Clientes"}</span>
+        <span className="opacity-40">/</span>
+        <span className="text-ink truncate">{VIEW_LABEL[view]}</span>
+      </div>
+
+      <div className="ml-auto flex items-center gap-2 shrink-0">
+        {mode === "broda" && (
+          <button
+            onClick={() => setEditMode(!editMode)}
+            title="Editar el contenido en la página"
+            className={`flex items-center gap-1.5 font-display font-extrabold uppercase text-[10.5px] tracking-wide px-3.5 py-2 rounded-full border transition-colors ${
+              editMode ? "bg-accent text-accent-ink border-accent" : "text-ink-soft border-border-strong hover:text-ink hover:border-ink-faint"
+            }`}
+          >
+            ✎ {editMode ? "Editando" : "Editar"}
+          </button>
+        )}
+      </div>
+    </header>
   );
 }
 
@@ -75,45 +93,64 @@ export function SideNav({
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <nav className="w-60 shrink-0 bg-panel border-r border-border px-4 py-5 flex flex-col gap-5 h-[calc(100vh-56px)] sticky top-14 overflow-y-auto">
+    <nav className="w-[236px] shrink-0 px-3 py-5 flex flex-col gap-6 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto border-r border-border">
       <div className="flex flex-col gap-1">
-        {items.map((it) => (
-          <button
-            key={it.id}
-            onClick={() => onSetView(it.id)}
-            className={`flex items-center gap-2 px-2.5 py-2 rounded-md font-display font-bold text-[12.5px] uppercase w-full text-left leading-tight ${
-              view === it.id ? "bg-accent text-accent-ink" : "text-ink-soft hover:text-ink hover:bg-panel-raised"
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-sm shrink-0 ${view === it.id ? "bg-accent-ink" : "bg-border-strong"}`} />
-            {it.label}
-          </button>
-        ))}
+        <div className="eyebrow px-2.5 mb-1.5">{mode === "broda" ? "El negocio" : "Operación"}</div>
+        {items.map((it) => {
+          const active = view === it.id;
+          return (
+            <button
+              key={it.id}
+              onClick={() => onSetView(it.id)}
+              className={`flex items-center gap-2.5 px-2.5 h-9 rounded-[var(--r-md)] text-[13px] font-semibold w-full text-left transition-colors ${
+                active ? "bg-accent text-accent-ink" : "text-ink-soft hover:text-ink hover:bg-surface"
+              }`}
+            >
+              <span className={`w-5 h-5 rounded-[6px] flex items-center justify-center text-[11px] shrink-0 ${active ? "bg-accent-ink/15" : "bg-surface-2"}`}>{it.icon}</span>
+              <span className="truncate">{it.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {mode === "clientes" && (
-        <div className="flex flex-col gap-1.5 pt-4 border-t border-border">
-          <div className="font-display font-extrabold text-[10px] uppercase tracking-wider text-ink-faint px-1.5 mb-1">Cuentas</div>
-          {clients.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onSelectClient(c.id)}
-              className={`flex items-center gap-2 px-2 py-2 rounded-md text-left w-full ${
-                c.id === selectedClientId ? "bg-panel-raised border border-border text-ink" : "text-ink-soft border border-transparent"
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.id === selectedClientId ? "bg-accent" : "bg-border-strong"}`} />
-              <span className="min-w-0 flex-1">
-                <div className="font-semibold text-[12.5px] overflow-hidden text-ellipsis whitespace-nowrap">{c.name}</div>
-                <div className="text-[10px] text-ink-faint">{c.tier}</div>
-              </span>
-            </button>
-          ))}
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-dashed border-border-strong text-ink-faint text-[11.5px] hover:text-ink hover:border-accent">
-            + Nueva cuenta
+        <div className="flex flex-col gap-1">
+          <div className="eyebrow px-2.5 mb-1.5">Cuentas</div>
+          {clients.map((c) => {
+            const active = c.id === selectedClientId;
+            return (
+              <button
+                key={c.id}
+                onClick={() => onSelectClient(c.id)}
+                className={`flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--r-md)] text-left w-full transition-colors ${
+                  active ? "bg-surface border border-border" : "border border-transparent hover:bg-surface/60"
+                }`}
+              >
+                <span
+                  className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center font-display font-black text-[11px]"
+                  style={{ background: active ? "var(--accent)" : "var(--surface-3)", color: active ? "var(--accent-ink)" : "var(--ink-soft)" }}
+                >
+                  {c.name.charAt(0)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block font-semibold text-[12.5px] truncate ${active ? "text-ink" : "text-ink-soft"}`}>{c.name}</span>
+                  <span className="block text-[10.5px] text-ink-faint">{c.tier}</span>
+                </span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-2.5 h-9 rounded-[var(--r-md)] border border-dashed border-border-strong text-ink-faint text-[12px] hover:text-ink hover:border-accent transition-colors mt-1"
+          >
+            <span className="text-[13px]">+</span> Nueva cuenta
           </button>
         </div>
       )}
+
+      <div className="mt-auto px-2.5 text-[10.5px] text-ink-faint leading-relaxed">
+        Modo local · los cambios se guardan en este navegador
+      </div>
 
       {showModal && (
         <AddClientModal onClose={() => setShowModal(false)} onCreate={(n, t, i) => { onAddClient(n, t, i); setShowModal(false); }} />
@@ -126,29 +163,35 @@ function AddClientModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
   const [tier, setTier] = useState("Growth");
+  const field = "border border-border-strong rounded-[var(--r-md)] px-3 py-2 bg-bg text-ink text-[13px] outline-none focus:border-accent";
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-5" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-panel-raised border border-border rounded-xl p-5 w-full max-w-sm">
-        <h3 className="text-base normal-case tracking-normal font-display font-bold mb-3">Nueva cuenta</h3>
-        <label className="flex flex-col gap-1 text-[11px] text-ink-faint mb-2.5">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[80] p-5" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-surface border border-border-strong rounded-[var(--r-xl)] p-6 w-full max-w-sm" style={{ boxShadow: "var(--shadow-pop)" }}>
+        <h3 className="text-[17px] normal-case tracking-tight font-display font-extrabold mb-4">Nueva cuenta</h3>
+        <label className="flex flex-col gap-1.5 text-[11px] text-ink-faint mb-3">
           Nombre
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Acme Corp" className="border border-border-strong rounded-md px-2.5 py-1.5 bg-panel text-ink" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Acme Corp" className={field} />
         </label>
-        <label className="flex flex-col gap-1 text-[11px] text-ink-faint mb-2.5">
+        <label className="flex flex-col gap-1.5 text-[11px] text-ink-faint mb-3">
           Industria
-          <input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="Ej: E-commerce" className="border border-border-strong rounded-md px-2.5 py-1.5 bg-panel text-ink" />
+          <input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="Ej: E-commerce" className={field} />
         </label>
-        <label className="flex flex-col gap-1 text-[11px] text-ink-faint mb-2.5">
+        <label className="flex flex-col gap-1.5 text-[11px] text-ink-faint mb-5">
           Tier
-          <select value={tier} onChange={(e) => setTier(e.target.value)} className="border border-border-strong rounded-md px-2.5 py-1.5 bg-panel text-ink">
+          <select value={tier} onChange={(e) => setTier(e.target.value)} className={field}>
             <option>Growth</option>
             <option>Enterprise</option>
             <option>Piloto</option>
           </select>
         </label>
-        <div className="flex justify-end gap-2 mt-1.5">
-          <button onClick={onClose} className="text-accent font-display font-extrabold uppercase text-xs px-3.5 py-2">Cancelar</button>
-          <button onClick={() => name.trim() && onCreate(name.trim(), tier, industry.trim())} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-xs px-3.5 py-2 rounded-md">Crear</button>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="text-ink-soft hover:text-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5">Cancelar</button>
+          <button
+            onClick={() => name.trim() && onCreate(name.trim(), tier, industry.trim())}
+            className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors"
+          >
+            Crear
+          </button>
         </div>
       </div>
     </div>

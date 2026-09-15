@@ -15,7 +15,7 @@ function agentsFor(stage: StageId) {
 
 export default function OrgChart() {
   return (
-    <div className="rounded-xl border border-border bg-panel-raised shadow-lg p-6 overflow-x-auto">
+    <div className="bg-surface border border-border rounded-[var(--r-lg)] p-6 overflow-x-auto">
       <div className="min-w-[880px] flex flex-col items-center">
         {/* Nivel 0 — estudio */}
         <Node title="Broda Studio" subtitle="Growth Lead · dueño del funnel completo" tone="accent" />
@@ -35,7 +35,7 @@ export default function OrgChart() {
                 {STAGE_ROLE[s.id].map((rid) => {
                   const r = ROLES.find((x) => x.id === rid)!;
                   return (
-                    <span key={rid} className="text-[10px] font-semibold px-2 py-1 rounded-md bg-panel border border-border-strong text-ink-soft">
+                    <span key={rid} className="text-[10px] font-semibold px-2 py-1 rounded-md bg-surface border border-border-strong text-ink-soft">
                       {r.name}
                     </span>
                   );
@@ -78,7 +78,7 @@ function Node({ title, subtitle, color, tone }: { title: string; subtitle: strin
       className="rounded-lg border px-4 py-2.5 text-center min-w-[160px]"
       style={{
         borderColor: tone === "accent" ? "var(--accent)" : color || "var(--border-strong)",
-        background: tone === "accent" ? "var(--accent)" : "var(--panel)",
+        background: tone === "accent" ? "var(--accent)" : "var(--surface)",
       }}
     >
       <div className="font-display font-extrabold text-sm uppercase tracking-tight" style={{ color: tone === "accent" ? "var(--accent-ink)" : color || "var(--ink)" }}>
