@@ -148,7 +148,7 @@ function AppInner() {
           onSelectClient={(id) => { setSelectedClientId(id); setOpenZone(null); }}
           onAddClient={addClient}
         />
-        <main className={`flex-1 min-w-0 px-8 py-8 pb-24 ${scoped ? "max-w-[1240px]" : "max-w-[900px]"}`}>
+        <main className="flex-1 min-w-0 px-8 py-8 pb-24 max-w-[1240px]">
           {scoped && (
             <div className="flex items-center justify-between flex-wrap gap-3 mb-7">
               <div className="flex items-center gap-3.5 min-w-0">

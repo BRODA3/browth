@@ -1,19 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Section, Nota, Editable } from "./doc";
+import { Section, Editable } from "./doc";
 import { useBroda } from "./BrodaContext";
 import type { LineaNegocio } from "@/lib/broda";
 
-const ESTADO_STYLE: Record<LineaNegocio["estado"], string> = {
-  activa: "bg-accent text-accent-ink border-accent",
-  construccion: "border-2 border-accent text-accent bg-transparent",
+const ESTADO_RING: Record<LineaNegocio["estado"], string> = {
+  activa: "bg-accent text-accent-ink border-2 border-accent",
+  construccion: "border-2 border-accent text-accent bg-accent/[0.07]",
   diferida: "border-2 border-dashed border-border-strong text-ink-faint bg-transparent",
+};
+
+const ESTADO_LABEL: Record<LineaNegocio["estado"], string> = {
+  activa: "Activa",
+  construccion: "En construcción",
+  diferida: "Diferida",
 };
 
 export default function NorthStar() {
   const { data } = useBroda();
-  const { LINEAS, LINEAS_TABLA, LINEAS_NOTA } = data;
+  const { LINEAS, LINEAS_TABLA } = data;
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -23,46 +29,84 @@ export default function NorthStar() {
         subtitle="Cada uno depende de que el anterior esté funcionando. No son cinco proyectos en paralelo: son cinco escalones. Tocá cualquiera para ver qué lo desbloquea y por qué todavía no."
         first
       >
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-5">
+        {/* Escalera: los 5 modelos con la flecha de dependencia entre uno y el siguiente */}
+        <div className="flex items-center gap-1 md:gap-2">
           {LINEAS.map((l, i) => (
-            <button
-              key={i}
-              onClick={() => setOpen(open === i ? null : i)}
-              className={`rounded-full aspect-square flex flex-col items-center justify-center text-center p-5 transition-transform hover:-translate-y-1 ${ESTADO_STYLE[l.estado]} ${open === i ? "ring-2 ring-offset-2 ring-offset-bg ring-accent" : ""}`}
-            >
-              <div className="font-display font-black text-[16px] md:text-[19px] leading-tight">{l.nombre}</div>
-              <div className={`text-[11px] md:text-[12px] leading-snug mt-2.5 ${l.estado === "activa" ? "opacity-75" : "text-ink-faint"}`}>{l.desc}</div>
-              <div className={`text-[9px] font-display font-extrabold uppercase tracking-wide mt-3 ${l.estado === "activa" ? "opacity-60" : "opacity-70"}`}>{open === i ? "▲ Cerrar" : "▼ Ver más"}</div>
-            </button>
+            <div key={i} className="contents">
+              {i > 0 && <StepArrow />}
+              <button
+                onClick={() => setOpen(open === i ? null : i)}
+                title={l.desc}
+                className={`flex-1 min-w-0 aspect-square rounded-full flex flex-col items-center justify-center text-center px-3 transition-all duration-200 hover:-translate-y-1 ${ESTADO_RING[l.estado]} ${
+                  open === i ? "ring-2 ring-accent ring-offset-4 ring-offset-bg" : ""
+                }`}
+              >
+                <span
+                  className={`font-display font-black leading-[1.05] tracking-tight ${
+                    l.nombre.length > 10 ? "text-[13px] md:text-[15px]" : "text-[15px] md:text-[19px]"
+                  }`}
+                >
+                  {l.nombre}
+                </span>
+                <span
+                  className={`text-[9px] font-display font-extrabold uppercase tracking-[0.08em] mt-2 ${
+                    l.estado === "activa" ? "opacity-60" : l.estado === "construccion" ? "opacity-80" : "opacity-70"
+                  }`}
+                >
+                  {ESTADO_LABEL[l.estado]}
+                </span>
+              </button>
+            </div>
           ))}
         </div>
 
         {open != null && (
-          <div className="mt-8 pt-8 border-t border-border">
-            <div className="flex items-baseline gap-3 mb-4 flex-wrap">
-              <h3 className="text-2xl m-0 normal-case tracking-normal" style={{ color: LINEAS[open].estado === "activa" ? "var(--accent)" : "var(--ink)" }}>
+          <div className="mt-10 pt-8 border-t border-border">
+            <div className="flex items-baseline gap-3 mb-3 flex-wrap">
+              <h3
+                className="text-[26px] m-0 normal-case tracking-tight"
+                style={{ color: LINEAS[open].estado === "diferida" ? "var(--ink)" : "var(--accent)" }}
+              >
                 <Editable path={["LINEAS", open, "nombre"]} value={LINEAS[open].nombre} />
               </h3>
               <span className="text-[12px] text-ink-faint">
                 <Editable path={["LINEAS", open, "etiqueta"]} value={LINEAS[open].etiqueta} />
               </span>
             </div>
-            <p className="text-ink-soft text-[14px] mb-5 max-w-[66ch]"><Editable path={["LINEAS", open, "desc"]} value={LINEAS[open].desc} multiline /></p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <p className="text-ink-soft text-[15px] leading-relaxed mb-7 max-w-[66ch]">
+              <Editable path={["LINEAS", open, "desc"]} value={LINEAS[open].desc} multiline />
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-[1000px]">
               <div>
-                <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Qué la desbloquea</div>
-                <p className="text-[13.5px] text-ink-soft"><Editable path={["LINEAS_TABLA", "filas", open, 1]} value={LINEAS_TABLA.filas[open][1]} multiline /></p>
+                <div className="eyebrow mb-2.5">Qué lo desbloquea</div>
+                <p className="text-[14px] text-ink-soft leading-relaxed">
+                  <Editable path={["LINEAS_TABLA", "filas", open, 1]} value={LINEAS_TABLA.filas[open][1]} multiline />
+                </p>
               </div>
               <div>
-                <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Por qué todavía no</div>
-                <p className="text-[13.5px] text-ink-soft"><Editable path={["LINEAS_TABLA", "filas", open, 2]} value={LINEAS_TABLA.filas[open][2]} multiline /></p>
+                <div className="eyebrow mb-2.5">Por qué todavía no</div>
+                <p className="text-[14px] text-ink-soft leading-relaxed">
+                  <Editable path={["LINEAS_TABLA", "filas", open, 2]} value={LINEAS_TABLA.filas[open][2]} multiline />
+                </p>
               </div>
             </div>
           </div>
         )}
-
-        <Nota titulo={LINEAS_NOTA.titulo} texto={LINEAS_NOTA.texto} path={["LINEAS_NOTA"]} />
       </Section>
     </div>
+  );
+}
+
+function StepArrow() {
+  return (
+    <svg
+      width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"
+      className="shrink-0 text-border-strong"
+    >
+      <path d="M1 7h17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M15 2.5 L20.5 7 L15 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
   );
 }
