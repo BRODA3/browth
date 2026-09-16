@@ -118,7 +118,10 @@ Precios:
 
 Costo real de atender un cliente: 1.150.000 ARS por mes (socios 600.000, Juan producción 220.000, Mecha diseño 200.000, editor 80.000, herramientas 50.000). Tipo de cambio de referencia 1.540.
 
-Reglas: el precio se da en la reunión, nunca antes. A 650 cada cuenta pierde 149.000 por mes cuando Juan produce en todas. El retainer solo no llega a los 2 millones por socio: la diferencia sale del modelo variable.`,
+Reglas: el precio se da en la reunión, nunca antes. A 650 cada cuenta pierde 149.000 por mes cuando Juan produce en todas. El retainer solo no llega a los 2 millones por socio: la diferencia sale del modelo variable.
+
+Relacionado: [[A quién le vendemos]] · [[Objeciones frecuentes]]
+#precios #oferta`,
   },
   {
     id: "doc-icp", titulo: "A quién le vendemos", tipo: "icp", fuente: "broda", activo: true, actualizado: "2026-09-16",
@@ -127,7 +130,10 @@ Reglas: el precio se da en la reunión, nunca antes. A 650 cada cuenta pierde 14
 Audiencia (B2C): emprendedores y freelance de 20 a 40 años con una habilidad. No son clientes: entran en TOFU, comparten y validan autoridad.
 
 Señales de buen lead: ya factura, tiene equipo o quiere armarlo, se quemó con una agencia antes, entiende que el problema es de proceso y no de "más contenido".
-Señales para descartar: busca solo edición de videos, no tiene presupuesto de 850 por mes, quiere resultados en 30 días.`,
+Señales para descartar: busca solo edición de videos, no tiene presupuesto de 850 por mes, quiere resultados en 30 días.
+
+Relacionado: [[Estrategia de contenido]] · [[Las 7 capas del embudo]]
+#icp #ventas`,
   },
   {
     id: "doc-proceso", titulo: "Las 7 capas del embudo", tipo: "proceso", fuente: "broda", activo: true, actualizado: "2026-09-16",
@@ -137,7 +143,10 @@ Estado: Atraer funciona. Capturar está a medias (el tráfico llega pero se disp
 
 Orden de construcción, una capa por vez: Capturar → Calificar → Convertir → Retener → recién ahí replicar a otra cuenta.
 
-Regla que ordena todo: no importa por dónde entre alguien, todo va a un solo canal y termina en un solo lugar de gestión. Un contacto suelto en un DM no existe.`,
+Regla que ordena todo: no importa por dónde entre alguien, todo va a un solo canal y termina en un solo lugar de gestión. Un contacto suelto en un DM no existe.
+
+Relacionado: [[A quién le vendemos]] · [[Oferta y precios de BRODA]]
+#proceso #embudo`,
   },
   {
     id: "doc-contenido", titulo: "Estrategia de contenido", tipo: "marca", fuente: "broda", activo: true, actualizado: "2026-09-16",
@@ -148,7 +157,10 @@ Regla que ordena todo: no importa por dónde entre alguien, todo va a un solo ca
 
 El contenido no responde por leads: responde por autoridad, que es lo que hace defendible el precio de 850. Prueba social está bloqueada hasta tener un resultado verificable.
 
-Tono: español rioplatense, directo, con criterio. Nada de corporativo vacío ni promesas sin número.`,
+Tono: español rioplatense, directo, con criterio. Nada de corporativo vacío ni promesas sin número.
+
+Relacionado: [[A quién le vendemos]] · [[Las 7 capas del embudo]]
+#contenido #marca`,
   },
   {
     id: "doc-objeciones", titulo: "Objeciones frecuentes", tipo: "objeciones", fuente: "broda", activo: true, actualizado: "2026-09-16",
@@ -158,6 +170,9 @@ Tono: español rioplatense, directo, con criterio. Nada de corporativo vacío ni
 
 "Quiero ver resultados primero" → Se ofrece el primer tramo medible (capturar y calificar funcionando en su cuenta), con baseline al arrancar. Sin baseline no hay forma de probar que se movió.
 
-"Lo hablo con mi socio" → Se agenda la próxima con los dos. Nunca se manda la propuesta sin reunión.`,
+"Lo hablo con mi socio" → Se agenda la próxima con los dos. Nunca se manda la propuesta sin reunión.
+
+Relacionado: [[Oferta y precios de BRODA]] · [[Las 7 capas del embudo]]
+#objeciones #ventas`,
   },
 ];

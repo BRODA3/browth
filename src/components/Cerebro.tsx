@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useBroda } from "./BrodaContext";
 import { Card, CardHeader } from "./ui";
+import GrafoCerebro from "./GrafoCerebro";
 import {
   TIPOS_DOC, nuevoDoc, parsearMarkdown, enlacesWiki, buscarRelevantes, pesoTotal,
   type DocCerebro, type TipoDoc,
@@ -17,6 +18,7 @@ export default function Cerebro() {
   const docs: DocCerebro[] = data.CEREBRO ?? [];
   const [selId, setSelId] = useState<string | null>(null);
   const [filtro, setFiltro] = useState("");
+  const [vista, setVista] = useState<"lista" | "grafo">("lista");
   const [prueba, setPrueba] = useState("");
   const archivos = useRef<HTMLInputElement>(null);
   const carpeta = useRef<HTMLInputElement>(null);
@@ -92,6 +94,25 @@ export default function Cerebro() {
           </div>
         </div>
 
+        <div className="flex gap-1.5 px-5 pb-3">
+          {(["lista", "grafo"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setVista(v)}
+              className={`font-display font-extrabold uppercase text-[10.5px] tracking-wide px-3.5 py-1.5 rounded-full border transition-colors ${vista === v ? "bg-accent text-accent-ink border-accent" : "text-ink-soft border-border-strong hover:text-ink"}`}
+            >
+              {v === "lista" ? "Lista" : "Grafo"}
+            </button>
+          ))}
+        </div>
+
+        {vista === "grafo" ? (
+          <div className="px-5 pb-5">
+            <GrafoCerebro docs={docs} onAbrir={(id) => { setVista("lista"); setSelId(id); }} />
+            <p className="text-[11.5px] text-ink-faint mt-2.5">Cada nota es un nodo y cada enlace [[así]] una línea. Arrastrá los nodos, tocá uno para abrirlo y usá la rueda del mouse para acercarte.</p>
+          </div>
+        ) : (
+        <>
         <div className="px-5 pb-4">
           <input
             value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar en el cerebro…"
@@ -124,6 +145,8 @@ export default function Cerebro() {
             );
           })}
         </div>
+        </>
+        )}
       </Card>
 
       {sel && (

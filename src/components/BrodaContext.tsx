@@ -43,7 +43,13 @@ function normalize(parsed: Partial<BrodaData>): BrodaData {
   const faltantes = DEFAULT_DATA.EQUIPO_BRODA.filter((m) => !personas.has(m.persona));
   if (faltantes.length) data.EQUIPO_BRODA = [...data.EQUIPO_BRODA, ...faltantes];
 
-  // Documentos base del cerebro que todavia no estaban guardados.
+  // Documentos base del cerebro: se agregan los que faltan y se actualizan los
+  // que solo crecieron desde el codigo (sin pisar lo que el usuario edito).
+  data.CEREBRO = (data.CEREBRO ?? []).map((d) => {
+    const base = SEED_CEREBRO.find((s) => s.titulo === d.titulo);
+    return base && base.contenido.startsWith(d.contenido) ? { ...d, contenido: base.contenido } : d;
+  });
+
   const titulos = new Set((data.CEREBRO ?? []).map((x) => x.titulo));
   data.CEREBRO = [...(data.CEREBRO ?? []), ...SEED_CEREBRO.filter((s) => !titulos.has(s.titulo))];
 
