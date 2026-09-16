@@ -11,6 +11,8 @@ import EstrategiaContenido from "./EstrategiaContenido";
 import PlanContenido from "./PlanContenido";
 import Crm from "./Crm";
 import type { Oportunidad } from "@/lib/crm";
+import Workflows from "./Workflows";
+import type { Workflow } from "@/lib/workflows";
 import { TopBar, SideNav, type Mode, type View } from "./Nav";
 import BroditaChat from "./BroditaChat";
 import { Card, CardHeader, StatCard, Pill, Donut, AreaChart, ProgressRow } from "./ui";
@@ -24,7 +26,7 @@ import {
   type Client, type KpiRow, type StageId, type TaskStatus, type AgentStatusValue,
 } from "@/lib/data";
 
-const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "agentes", "metricas"]);
+const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "workflows", "agentes", "metricas"]);
 
 function fmt(v: number | null | undefined) {
   return v == null ? "—" : v.toLocaleString("es-AR");
@@ -59,6 +61,7 @@ function AppInner() {
     agentStatusByClient?: Record<string, Record<string, { status: AgentStatusValue; autonomy: number; resp: number }>>;
     kpisByClient?: Record<string, KpiRow[]>;
     crmByClient?: Record<string, Oportunidad[]>;
+    workflowsByClient?: Record<string, Workflow[]>;
   }>({}), []);
 
   const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
@@ -81,14 +84,15 @@ function AppInner() {
   );
 
   const [crmByClient, setCrmByClient] = useState<Record<string, Oportunidad[]>>(() => persisted.crmByClient ?? {});
+  const [workflowsByClient, setWorkflowsByClient] = useState<Record<string, Workflow[]>>(() => persisted.workflowsByClient ?? {});
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient, workflowsByClient }));
     } catch {
       // localStorage no disponible (modo privado, cuota llena) — la app sigue funcionando en memoria.
     }
-  }, [clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient]);
+  }, [clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient, workflowsByClient]);
 
   const client = clients.find((c) => c.id === selectedClientId)!;
   const taskStatus = taskStatusByClient[selectedClientId] || {};
@@ -195,6 +199,12 @@ function AppInner() {
             <Crm
               ops={crmByClient[selectedClientId] ?? []}
               onChange={(ops) => setCrmByClient((prevState) => ({ ...prevState, [selectedClientId]: ops }))}
+            />
+          )}
+          {view === "workflows" && (
+            <Workflows
+              flows={workflowsByClient[selectedClientId] ?? []}
+              onChange={(f) => setWorkflowsByClient((prevState) => ({ ...prevState, [selectedClientId]: f }))}
             />
           )}
           {view === "equipo" && (

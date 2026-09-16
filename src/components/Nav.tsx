@@ -8,7 +8,7 @@ export type Mode = "broda" | "clientes";
 export type View =
   | "northstar" | "businesscase" | "infra" | "estrategia" | "plan"
   | "equipo"
-  | "pipeline" | "crm" | "playbooks" | "agentes" | "metricas";
+  | "pipeline" | "crm" | "workflows" | "playbooks" | "agentes" | "metricas";
 
 export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "northstar", label: "North Star", icon: "◎" },
@@ -22,6 +22,7 @@ export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
 export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "pipeline", label: "Pipeline", icon: "⧗" },
   { id: "crm", label: "CRM", icon: "▣" },
+  { id: "workflows", label: "Workflows", icon: "⑃" },
   { id: "playbooks", label: "Playbooks", icon: "▤" },
   { id: "agentes", label: "Agentes IA", icon: "◈" },
   { id: "metricas", label: "Métricas", icon: "▥" },
@@ -30,7 +31,7 @@ export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
 export const VIEW_LABEL: Record<View, string> = {
   northstar: "North Star", businesscase: "Business Case", infra: "Infraestructura comercial",
   estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo",
-  pipeline: "Pipeline", crm: "CRM", playbooks: "Playbooks", agentes: "Agentes IA", metricas: "Métricas",
+  pipeline: "Pipeline", crm: "CRM", workflows: "Workflows", playbooks: "Playbooks", agentes: "Agentes IA", metricas: "Métricas",
 };
 
 export function TopBar({
