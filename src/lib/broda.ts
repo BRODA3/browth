@@ -398,3 +398,86 @@ export const PLAN = {
   ] as PiezaPlan[],
   reservas: [] as string[],
 };
+
+/* ---------------- FLUJOS: el proceso paso a paso de cada capa ---------------- */
+
+/** Qué tan automatizado está hoy cada paso. De acá sale la lista de agentes a construir. */
+export type Automatizacion = "manual" | "asistido" | "agente";
+
+export interface PasoFlujo {
+  que: string;
+  quien: string;
+  herramienta: string;
+  salida: string;
+  automatizacion: Automatizacion;
+  /** Agente que lo hace (o que habría que construir). Vacío = todavía sin decidir. */
+  agente: string;
+}
+
+export interface FlujoCapa {
+  objetivo: string;
+  disparador: string;
+  pasos: PasoFlujo[];
+  listo: string;
+  kpi: string;
+}
+
+export const AUTOMATIZACION_LABEL: Record<Automatizacion, string> = {
+  manual: "Manual hoy",
+  asistido: "Asistido",
+  agente: "Agente",
+};
+
+export function pasoVacio(): PasoFlujo {
+  return { que: "", quien: "", herramienta: "", salida: "", automatizacion: "manual", agente: "" };
+}
+
+/** Se mapea una capa por vez, en el orden en que se construyen. Lo que todavía
+ * no se mapeó no se inventa: queda vacío hasta que el equipo lo baje. */
+export const FLUJOS: Record<string, FlujoCapa> = {
+  capturar: {
+    objetivo: "Que ningún contacto se pierda: todo lo que entra queda registrado en un solo lugar.",
+    disparador: "Alguien escribe por WhatsApp, Instagram o Messenger, o deja sus datos en la web.",
+    listo: "Todos los contactos de la semana están en un solo lugar, con nombre, número y origen. Ninguno quedó suelto en un chat.",
+    kpi: "Contactos perdidos = 0. Porcentaje de contactos con origen cargado.",
+    pasos: [
+      { que: "Entra el mensaje y queda registrado con nombre, usuario y texto.", quien: "Tomi", herramienta: "WhatsApp Cloud API · Instagram Messaging API", salida: "Mensaje entrante con sus datos", automatizacion: "agente", agente: "Entrada de mensajes" },
+      { que: "Se crea el contacto en el CRM. Si ya existía, el mensaje se suma a su ficha.", quien: "Tomi", herramienta: "CRM de BRODA WORLD", salida: "Un contacto único, sin duplicados", automatizacion: "agente", agente: "Entrada de mensajes" },
+      { que: "Se etiqueta de dónde vino: orgánico, pauta, web o referido.", quien: "Thiago", herramienta: "Identificador del anuncio · UTM del sitio", salida: "Origen cargado en el contacto", automatizacion: "asistido", agente: "" },
+      { que: "Se responde el primer mensaje antes de los 5 minutos.", quien: "Creativo", herramienta: "Bandeja de conversaciones", salida: "Conversación abierta", automatizacion: "manual", agente: "Calificador inbound" },
+      { que: "La oportunidad aparece en la columna Nuevo del pipeline.", quien: "Tomi", herramienta: "CRM de BRODA WORLD", salida: "Oportunidad visible para todo el equipo", automatizacion: "agente", agente: "" },
+    ],
+  },
+  calificar: {
+    objetivo: "Que el vendedor solo hable con quien puede comprar, y que el resto quede etiquetado, no perdido.",
+    disparador: "Hay una oportunidad nueva en la columna Nuevo.",
+    listo: "Sabemos qué porcentaje de las consultas califica, medido, y el vendedor solo ve lo que califica.",
+    kpi: "Porcentaje de calificados sobre el total de consultas.",
+    pasos: [
+      { que: "Se hacen las tres preguntas fijas: qué necesita, con cuánto cuenta y para cuándo.", quien: "Tomi", herramienta: "Agente sobre WhatsApp e Instagram", salida: "Las tres respuestas en la ficha", automatizacion: "manual", agente: "Calificador inbound" },
+      { que: "Se clasifica en calificado, casi calificado o descartado.", quien: "Tomi", herramienta: "CRM de BRODA WORLD", salida: "Etiqueta en la oportunidad", automatizacion: "manual", agente: "Calificador inbound" },
+      { que: "Si califica, pasa a la columna Calificado y se avisa al vendedor con el contexto.", quien: "Thiago", herramienta: "CRM de BRODA WORLD", salida: "Oportunidad con dueño asignado", automatizacion: "asistido", agente: "" },
+      { que: "Si no califica, queda etiquetado y entra a la base para recibir contenido.", quien: "Tomi", herramienta: "Base de contactos", salida: "Contacto en la base, no perdido", automatizacion: "manual", agente: "" },
+      { que: "Ante una objeción de precio fuerte o un pedido fuera de catálogo, pasa a una persona.", quien: "Charly", herramienta: "Bandeja de conversaciones", salida: "Conversación escalada", automatizacion: "manual", agente: "" },
+    ],
+  },
+  convertir: {
+    objetivo: "Que el calificado se convierta en venta, con un proceso que se puede leer y corregir.",
+    disparador: "Una oportunidad entra en la columna Calificado.",
+    listo: "El pipeline muestra dónde se traba y la tasa de cierre se puede leer sola.",
+    kpi: "Tasa de cierre y etapa donde se traba el pipeline.",
+    pasos: [
+      { que: "Se agenda la reunión dentro de las 48 horas.", quien: "Thiago", herramienta: "Calendario", salida: "Reunión agendada", automatizacion: "manual", agente: "" },
+      { que: "Una hora antes se arma el resumen del prospecto: cómo llegó, qué dijo y qué objeción esperar.", quien: "Thiago", herramienta: "CRM de BRODA WORLD", salida: "Briefing de una página", automatizacion: "manual", agente: "Briefing pre-reunión" },
+      { que: "Se hace la reunión, grabada. El precio se da en la reunión, no antes.", quien: "Charly", herramienta: "Videollamada grabada", salida: "Reunión grabada y notas", automatizacion: "manual", agente: "" },
+      { que: "La propuesta sale dentro de las 48 horas.", quien: "Charly", herramienta: "Documento de propuesta", salida: "Propuesta enviada", automatizacion: "manual", agente: "Generador de propuestas" },
+      { que: "A las 48 horas sin respuesta sale el seguimiento, con algo nuevo adentro.", quien: "Thiago", herramienta: "WhatsApp · Mail", salida: "Seguimiento enviado", automatizacion: "manual", agente: "Seguimiento" },
+      { que: "Se cierra: contrato y pago. La oportunidad pasa a Ganado.", quien: "Charly", herramienta: "CRM de BRODA WORLD", salida: "Cliente firmado", automatizacion: "manual", agente: "" },
+      { que: "Si se pierde, se documenta el motivo antes de cerrarla.", quien: "Thiago", herramienta: "CRM de BRODA WORLD", salida: "Motivo de pérdida registrado", automatizacion: "manual", agente: "" },
+    ],
+  },
+  atraer: { objetivo: "", disparador: "", pasos: [], listo: "", kpi: "" },
+  retener: { objetivo: "", disparador: "", pasos: [], listo: "", kpi: "" },
+  expandir: { objetivo: "", disparador: "", pasos: [], listo: "", kpi: "" },
+  referir: { objetivo: "", disparador: "", pasos: [], listo: "", kpi: "" },
+};

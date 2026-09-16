@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { setPath, type PathKey } from "@/lib/setPath";
 import {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
-  EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN,
+  EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
   type PiezaPlan,
 } from "@/lib/broda";
 
@@ -14,7 +14,7 @@ import {
 
 const DEFAULT_DATA = {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
-  EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN,
+  EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
 };
 
 export type BrodaData = typeof DEFAULT_DATA;
@@ -40,6 +40,9 @@ function normalize(parsed: Partial<BrodaData>): BrodaData {
   const personas = new Set(data.EQUIPO_BRODA.map((m) => m.persona));
   const faltantes = DEFAULT_DATA.EQUIPO_BRODA.filter((m) => !personas.has(m.persona));
   if (faltantes.length) data.EQUIPO_BRODA = [...data.EQUIPO_BRODA, ...faltantes];
+
+  // Capas nuevas del flujo que todavia no estaban en lo guardado.
+  data.FLUJOS = { ...DEFAULT_DATA.FLUJOS, ...(parsed.FLUJOS ?? {}) };
 
   // La estructura no se edita desde la UI: siempre manda la del código.
   data.ESTRUCTURA = DEFAULT_DATA.ESTRUCTURA;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Section, Nota, DocTable, Editable } from "./doc";
 import { useBroda } from "./BrodaContext";
+import FlujoCapa from "./FlujoCapa";
 import { type EstadoCapa, type CapaEmbudo } from "@/lib/broda";
 
 // Embudo plano copiado del documento original de Broda: tres capas que se
@@ -139,7 +140,9 @@ export default function InfraFunnel() {
                 {activeCapa.sub != null && <> — <Editable path={["CAPAS", activeIdx, "sub"]} value={activeCapa.sub} /></>}
               </h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-5">
+            <FlujoCapa capaId={activeCapa.id} dueno={activeCapa.quien} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-5 mt-8 pt-8 border-t border-border">
               <div>
                 <div className="font-display font-extrabold text-[10.5px] uppercase tracking-wider text-ink-faint mb-2">Proceso</div>
                 <ul className="flex flex-col gap-1.5">
