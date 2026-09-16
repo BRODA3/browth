@@ -132,7 +132,15 @@ function AppInner() {
     return { done, total: tasks.length, pct: tasks.length ? Math.round((done / tasks.length) * 100) : 0 };
   }
 
-  const agentesCliente = agentesByClient[selectedClientId] ?? seedAgentes();
+  // Los agentes guardados con una versión vieja del modelo se completan solos.
+  const agentesCliente: AgenteConfig[] = (agentesByClient[selectedClientId] ?? seedAgentes()).map((x) => ({
+    ...x,
+    herramientas: x.herramientas ?? [],
+    conexiones: x.conexiones ?? [],
+    ejecuciones: x.ejecuciones ?? 0,
+    resueltas: x.resueltas ?? 0,
+    escaladas: x.escaladas ?? 0,
+  }));
 
   function agentAdoptionByStage(stageId: StageId) {
     const delMotor = agentesCliente.filter((a) => a.etapa === stageId);
@@ -309,6 +317,8 @@ function AppInner() {
             <AgentesBoard
               agentes={agentesCliente}
               onChange={(next) => setAgentesByClient((prevState) => ({ ...prevState, [selectedClientId]: next }))}
+              cerebro={cerebroActivo}
+              cuenta={client.name}
             />
           )}
           {view === "metricas" && (

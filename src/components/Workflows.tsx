@@ -84,6 +84,7 @@ function Tablero({ wf, onChange, onDelete }: { wf: Workflow; onChange: (w: Workf
   const [conectando, setConectando] = useState<string | null>(null);
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
+  const [foco, setFoco] = useState(false);
 
   const seleccionado = wf.nodos.find((n) => n.id === selId) ?? null;
   const pos = (n: NodoFlujo) => (drag?.id === n.id ? { ...n, x: drag.x, y: drag.y } : n);
@@ -140,10 +141,20 @@ function Tablero({ wf, onChange, onDelete }: { wf: Workflow; onChange: (w: Workf
     setSelId(null);
   };
 
+  useEffect(() => {
+    const tecla = (ev: KeyboardEvent) => {
+      if (ev.key !== "Escape") return;
+      if (conectando) setConectando(null);
+      else if (foco) setFoco(false);
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [conectando, foco]);
+
   const nodoOrigen = conectando ? wf.nodos.find((n) => n.id === conectando) : null;
 
-  return (
-    <div className="flex flex-col gap-3">
+  const contenido = (
+    <div className={`flex flex-col gap-3 ${foco ? "h-full" : ""}`}>
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={agregar} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors">
           + Cuadro
@@ -156,6 +167,7 @@ function Tablero({ wf, onChange, onDelete }: { wf: Workflow; onChange: (w: Workf
           <span className="tabular text-[11.5px] text-ink-faint w-10 text-center">{Math.round(escala * 100)}%</span>
           <Chip onClick={() => setEscala((e) => Math.min(1.5, +(e + 0.1).toFixed(2)))}>+</Chip>
           <Chip onClick={() => { setPan({ x: 0, y: 0 }); setEscala(1); }}>Centrar</Chip>
+          <Chip onClick={() => setFoco(!foco)}>{foco ? "Salir (Esc)" : "Pantalla completa"}</Chip>
           <Chip onClick={() => { if (confirm(`¿Borrar el flujo "${wf.nombre}"?`)) onDelete(); }}>Borrar flujo</Chip>
         </div>
       </div>
@@ -166,7 +178,7 @@ function Tablero({ wf, onChange, onDelete }: { wf: Workflow; onChange: (w: Workf
         onPointerMove={(ev) => conectando && setMouse(aTablero(ev))}
         onKeyDown={(ev) => ev.key === "Escape" && setConectando(null)}
         tabIndex={0}
-        className="relative h-[calc(100vh-260px)] min-h-[440px] overflow-hidden rounded-[var(--r-lg)] border border-border bg-surface-2/40 outline-none cursor-grab active:cursor-grabbing"
+        className={`relative overflow-hidden rounded-[var(--r-lg)] border border-border bg-surface-2/40 outline-none cursor-grab active:cursor-grabbing ${foco ? "flex-1 min-h-0" : "h-[calc(100vh-260px)] min-h-[440px]"}`}
         style={{
           backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)",
           backgroundSize: `${24 * escala}px ${24 * escala}px`,
@@ -269,6 +281,9 @@ function Tablero({ wf, onChange, onDelete }: { wf: Workflow; onChange: (w: Workf
       `}</style>
     </div>
   );
+
+  if (!foco) return contenido;
+  return <div className="fixed inset-0 z-[75] bg-bg p-4 overflow-hidden">{contenido}</div>;
 }
 
 function Chip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
