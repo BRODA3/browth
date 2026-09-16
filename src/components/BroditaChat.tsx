@@ -11,13 +11,43 @@ interface ChatMsg {
   text: string;
 }
 
-export default function BroditaChat({ mode, client }: { mode: Mode; client: Client | null }) {
+export interface AccionBrodita {
+  id: string;
+  tool: string;
+  input: Record<string, unknown>;
+}
+
+const ETIQUETA_ACCION: Record<string, string> = {
+  crear_flujo: "Armar este flujo en Workflows",
+  crear_oportunidad: "Cargar en el CRM",
+  agregar_pieza_contenido: "Sumar al plan de contenido",
+  guardar_en_cerebro: "Guardar en el cerebro",
+};
+
+function resumen(a: AccionBrodita): string {
+  const i = a.input;
+  const txt = (k: string) => (typeof i[k] === "string" ? (i[k] as string) : "");
+  if (a.tool === "crear_flujo") return `${txt("nombre")} · ${Array.isArray(i.pasos) ? i.pasos.length : 0} pasos`;
+  if (a.tool === "crear_oportunidad") return [txt("nombre"), txt("empresa")].filter(Boolean).join(" · ");
+  if (a.tool === "agregar_pieza_contenido") return [txt("formato"), txt("tema")].filter(Boolean).join(" · ");
+  if (a.tool === "guardar_en_cerebro") return txt("titulo");
+  return "";
+}
+
+export default function BroditaChat({
+  mode, client, onAccion,
+}: {
+  mode: Mode;
+  client: Client | null;
+  onAccion: (a: AccionBrodita) => string;
+}) {
   const { data } = useBroda();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [fuentes, setFuentes] = useState<DocCerebro[]>([]);
+  const [acciones, setAcciones] = useState<AccionBrodita[]>([]);
 
   function buildContext(): string {
     if (mode === "clientes" && client) {
@@ -31,8 +61,19 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
     const next = !open;
     setOpen(next);
     if (next && messages.length === 0) {
-      setMessages([{ role: "assistant", text: mode === "clientes" && client ? `Hola, soy Brodita. Estoy mirando ${client.name}. ¿Por dónde arrancamos?` : "Hola, soy Brodita. Preguntame sobre la infraestructura comercial, el business case o lo que necesites de Broda." }]);
+      setMessages([{
+        role: "assistant",
+        text: mode === "clientes" && client
+          ? `Hola, soy Brodita. Estoy mirando ${client.name}. Puedo armarte flujos, cargar oportunidades en el CRM o pensar la estrategia. ¿Por dónde arrancamos?`
+          : "Hola, soy Brodita. Puedo armar flujos, sumar piezas al plan de contenido o guardar lo que definamos en mi cerebro. Decime qué necesitás.",
+      }]);
     }
+  }
+
+  function aplicar(a: AccionBrodita) {
+    const detalle = onAccion(a);
+    setAcciones((prev) => prev.filter((x) => x.id !== a.id));
+    setMessages((m) => [...m, { role: "assistant", text: `✓ ${detalle}` }]);
   }
 
   async function send() {
@@ -42,6 +83,7 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
     setMessages(next);
     setInput("");
     setBusy(true);
+    setAcciones([]);
     const docs = buscarRelevantes(data.CEREBRO ?? [], text, 4);
     setFuentes(docs);
     try {
@@ -49,13 +91,14 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: next,
+          messages: next.filter((m) => !m.text.startsWith("✓ ")),
           context: `${buildContext()}\n\nCerebro de Broda (usalo como fuente; no inventes por fuera de esto):\n${contextoDeDocs(docs)}`,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error de Brodita");
-      setMessages((m) => [...m, { role: "assistant", text: json.reply }]);
+      if (json.reply) setMessages((m) => [...m, { role: "assistant", text: json.reply }]);
+      setAcciones(json.acciones ?? []);
     } catch (e) {
       setMessages((m) => [...m, { role: "assistant", text: e instanceof Error ? e.message : "Se cortó la señal, probá de nuevo." }]);
     } finally {
@@ -76,12 +119,14 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
       </button>
 
       {open && (
-        <div className="fixed bottom-[88px] right-5 w-[340px] max-h-[70vh] bg-surface-2 border border-border-strong rounded-2xl shadow-2xl flex flex-col z-[70] overflow-hidden">
+        <div className="fixed bottom-[88px] right-5 w-[360px] max-h-[74vh] bg-surface-2 border border-border-strong rounded-2xl shadow-2xl flex flex-col z-[70] overflow-hidden">
           <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border bg-surface">
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center font-display font-black text-accent-ink text-[13px]">B</div>
             <div className="flex-1">
               <div className="font-display font-extrabold text-[12px] uppercase">Brodita</div>
-              <div className="text-[9.5px] text-ink-faint">{mode === "clientes" && client ? client.name : "Growth de Broda"}</div>
+              <div className="text-[9.5px] text-ink-faint">
+                {mode === "clientes" && client ? client.name : "Cerebro de ventas y growth"} · {(data.CEREBRO ?? []).filter((d) => d.activo).length} docs
+              </div>
             </div>
             <button onClick={() => setOpen(false)} className="text-ink-faint hover:text-ink text-[13px] px-1">✕</button>
           </div>
@@ -90,7 +135,7 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`max-w-[86%] px-2.5 py-2 rounded-xl text-[12.5px] leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[88%] px-2.5 py-2 rounded-xl text-[12.5px] leading-relaxed whitespace-pre-wrap ${
                   m.role === "assistant"
                     ? "self-start bg-accent/10 border border-accent/25 rounded-bl-sm"
                     : "self-end bg-surface-3 border border-border rounded-br-sm"
@@ -99,6 +144,24 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
                 {m.text}
               </div>
             ))}
+
+            {acciones.map((a) => (
+              <div key={a.id} className="self-start w-[88%] border border-accent/40 bg-accent/[0.06] rounded-xl p-2.5">
+                <div className="font-display font-extrabold uppercase text-[9.5px] tracking-wide text-accent mb-1">
+                  {ETIQUETA_ACCION[a.tool] ?? a.tool}
+                </div>
+                <div className="text-[12px] text-ink-soft mb-2 leading-snug">{resumen(a)}</div>
+                <div className="flex gap-2">
+                  <button onClick={() => aplicar(a)} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[10px] px-3 py-1.5 rounded-lg">
+                    Aplicar
+                  </button>
+                  <button onClick={() => setAcciones((p) => p.filter((x) => x.id !== a.id))} className="text-ink-faint hover:text-ink text-[11px] px-2">
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            ))}
+
             {busy && <div className="self-start text-[12px] text-ink-faint italic">Brodita está pensando…</div>}
             {!busy && fuentes.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-0.5">
@@ -114,7 +177,7 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Preguntale algo a Brodita…"
+              placeholder="Pedile algo a Brodita…"
               className="flex-1 border border-border-strong rounded-lg bg-surface-2 text-ink px-2.5 py-2 text-[12.5px] outline-none focus:border-accent"
             />
             <button onClick={send} disabled={busy} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-3.5 rounded-lg disabled:opacity-50">

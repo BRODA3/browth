@@ -13,6 +13,11 @@ import Crm from "./Crm";
 import type { Oportunidad } from "@/lib/crm";
 import Workflows from "./Workflows";
 import Cerebro from "./Cerebro";
+import type { AccionBrodita } from "./BroditaChat";
+import { desdeBrodita } from "@/lib/workflows";
+import { nuevaOportunidad, FUENTES, ETAPAS, type EtapaId, type FuenteId } from "@/lib/crm";
+import { nuevoDoc, type TipoDoc } from "@/lib/cerebro";
+import { CANALES, type PiezaPlan } from "@/lib/broda";
 import { contextoDeDocs } from "@/lib/cerebro";
 import type { Workflow } from "@/lib/workflows";
 import { TopBar, SideNav, type Mode, type View } from "./Nav";
@@ -57,7 +62,7 @@ export default function App() {
 }
 
 function AppInner() {
-  const { data: brodaData } = useBroda();
+  const { data: brodaData, update: updateBroda } = useBroda();
   const persisted = useMemo(() => loadPersisted<{
     clients?: Client[];
     taskStatusByClient?: Record<string, Record<string, TaskStatus>>;
@@ -148,6 +153,65 @@ function AppInner() {
 
   // Lo que Brodita sabe, listo para mandarle cuando construye algo.
   const cerebroActivo = contextoDeDocs((brodaData.CEREBRO ?? []).filter((d) => d.activo), 1200);
+
+
+  /** Lo que Brodita deja hecho cuando el equipo toca "Aplicar". */
+  function ejecutarAccion(a: AccionBrodita): string {
+    const i = a.input as Record<string, unknown>;
+    const str = (k: string, def = "") => (typeof i[k] === "string" ? (i[k] as string) : def);
+
+    if (a.tool === "crear_flujo") {
+      const pasos = Array.isArray(i.pasos) ? (i.pasos as Record<string, never>[]) : [];
+      const wf = desdeBrodita(str("nombre", "Flujo de Brodita"), pasos);
+      setWorkflowsByClient((prevState) => ({ ...prevState, [selectedClientId]: [...(prevState[selectedClientId] ?? []), wf] }));
+      setMode("clientes");
+      setView("workflows");
+      return `Armé "${wf.nombre}" en Workflows de ${client.name}, con ${wf.nodos.length} pasos.`;
+    }
+
+    if (a.tool === "crear_oportunidad") {
+      const fuente = FUENTES.some((f) => f.id === i.fuente) ? (i.fuente as FuenteId) : "manual";
+      const etapa = ETAPAS.some((e) => e.id === i.etapa) ? (i.etapa as EtapaId) : "nuevo";
+      const op = nuevaOportunidad({
+        nombre: str("nombre"), empresa: str("empresa"), telefono: str("telefono"), email: str("email"),
+        nota: str("nota"), valor: typeof i.valor === "number" ? i.valor : 0, fuente, etapa,
+      });
+      setCrmByClient((prevState) => ({ ...prevState, [selectedClientId]: [...(prevState[selectedClientId] ?? []), op] }));
+      setMode("clientes");
+      setView("crm");
+      return `Cargué a ${op.nombre || "el contacto"} en el CRM de ${client.name}.`;
+    }
+
+    if (a.tool === "agregar_pieza_contenido") {
+      const canal = CANALES.find((c) => c.canal === i.canal) ?? CANALES[0];
+      const pieza: PiezaPlan = {
+        id: `p-${Date.now().toString(36)}`,
+        prioridad: false,
+        fecha: str("fecha"),
+        canal: canal.canal as PiezaPlan["canal"],
+        canalLabel: canal.label,
+        formato: str("formato", "Placa"),
+        tema: str("tema"),
+        pilar: str("pilar", "Sin asignar"),
+        estado: "Bloque abierto",
+        detalle: "",
+        titular: str("titular"), subtitulo: str("subtitulo"),
+        hook: str("hook"), cta: str("cta"),
+      };
+      updateBroda(["PLAN", "filas"], [...brodaData.PLAN.filas, pieza]);
+      setMode("broda");
+      setView("plan");
+      return `Sumé "${pieza.tema}" al plan de contenido${pieza.fecha ? ` para el ${pieza.fecha}` : ", sin fecha"}.`;
+    }
+
+    if (a.tool === "guardar_en_cerebro") {
+      const doc = nuevoDoc({ titulo: str("titulo", "Nota de Brodita"), contenido: str("contenido"), tipo: (str("tipo", "nota") as TipoDoc) });
+      updateBroda(["CEREBRO"], [...(brodaData.CEREBRO ?? []), doc]);
+      return `Guardé "${doc.titulo}" en el cerebro. Ya lo usa en las próximas respuestas.`;
+    }
+
+    return "No supe qué hacer con eso.";
+  }
 
   const scoped = CLIENT_SCOPED.has(view);
 
@@ -248,7 +312,7 @@ function AppInner() {
           )}
         </main>
       </div>
-      <BroditaChat mode={mode} client={client} />
+      <BroditaChat mode={mode} client={client} onAccion={ejecutarAccion} />
     </div>
   );
 }
