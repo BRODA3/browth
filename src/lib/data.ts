@@ -429,23 +429,51 @@ export const AGENT_STATUS_OPTIONS = ["No construido", "En construcción", "Activ
 export type AgentStatusValue = (typeof AGENT_STATUS_OPTIONS)[number];
 
 export const KPI_FIELDS = [
-  { k: "leads", l: "Leads" }, { k: "meetings", l: "Reuniones" }, { k: "proposals", l: "Propuestas" },
-  { k: "closes", l: "Cierres" }, { k: "revenue", l: "Revenue ($)" }, { k: "healthScore", l: "Health score" },
-  { k: "nrr", l: "NRR (%)" }, { k: "referrals", l: "Referidos" }, { k: "churnRate", l: "Churn (%)" },
+  { k: "adSpend", l: "Inversión en pauta" },
+  { k: "leads", l: "Leads" },
+  { k: "meetings", l: "Reuniones" },
+  { k: "proposals", l: "Propuestas" },
+  { k: "closes", l: "Cierres" },
+  { k: "revenue", l: "Ingresos" },
 ] as const;
 
 export interface KpiRow {
   period: string;
+  /** Lo que se invirtió en pauta en el período. */
+  adSpend: number | null;
   leads: number | null;
   meetings: number | null;
   proposals: number | null;
   closes: number | null;
   revenue: number | null;
-  healthScore: number | null;
-  nrr: number | null;
-  referrals: number | null;
-  churnRate: number | null;
 }
+
+/** Las métricas que no se cargan: salen de dividir las que sí.
+ * Un equipo de growth mira estas, no los números sueltos. */
+export function derivadas(r: KpiRow) {
+  const div = (a: number | null, b: number | null) => (a != null && b != null && b !== 0 ? a / b : null);
+  return {
+    cpl: div(r.adSpend, r.leads),
+    costoReunion: div(r.adSpend, r.meetings),
+    cac: div(r.adSpend, r.closes),
+    ticket: div(r.revenue, r.closes),
+    roas: div(r.revenue, r.adSpend),
+    tasaCalificacion: div(r.meetings, r.leads),
+    tasaCierre: div(r.closes, r.proposals),
+    leadACliente: div(r.closes, r.leads),
+  };
+}
+
+export const METRICAS_DERIVADAS = [
+  { k: "cpl", l: "Costo por lead", tipo: "moneda" },
+  { k: "costoReunion", l: "Costo por reunión", tipo: "moneda" },
+  { k: "cac", l: "Costo por cliente (CAC)", tipo: "moneda" },
+  { k: "ticket", l: "Ticket promedio", tipo: "moneda" },
+  { k: "roas", l: "ROAS", tipo: "veces" },
+  { k: "tasaCalificacion", l: "Lead → reunión", tipo: "pct" },
+  { k: "tasaCierre", l: "Propuesta → cierre", tipo: "pct" },
+  { k: "leadACliente", l: "Lead → cliente", tipo: "pct" },
+] as const;
 
 export interface ClientOwners {
   growth: string;

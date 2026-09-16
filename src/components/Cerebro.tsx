@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useBroda } from "./BrodaContext";
 import { Card, CardHeader } from "./ui";
 import GrafoCerebro from "./GrafoCerebro";
 import {
@@ -13,9 +12,12 @@ import {
 // notas de Obsidian. Cada respuesta del chat usa los documentos activos que
 // más se parecen a la pregunta.
 
-export default function Cerebro() {
-  const { data, update } = useBroda();
-  const docs: DocCerebro[] = data.CEREBRO ?? [];
+export default function Cerebro({ docs, onChange, titulo, bajada }: {
+  docs: DocCerebro[];
+  onChange: (docs: DocCerebro[]) => void;
+  titulo: string;
+  bajada: string;
+}) {
   const [selId, setSelId] = useState<string | null>(null);
   const [filtro, setFiltro] = useState("");
   const [vista, setVista] = useState<"lista" | "grafo">("lista");
@@ -23,7 +25,7 @@ export default function Cerebro() {
   const archivos = useRef<HTMLInputElement>(null);
   const carpeta = useRef<HTMLInputElement>(null);
 
-  const setDocs = (next: DocCerebro[]) => update(["CEREBRO"], next);
+  const setDocs = onChange;
   const guardar = (d: DocCerebro) => setDocs(docs.map((x) => (x.id === d.id ? { ...d, actualizado: new Date().toISOString() } : x)));
   const sel = docs.find((d) => d.id === selId) ?? null;
 
@@ -55,10 +57,8 @@ export default function Cerebro() {
   return (
     <div className="flex flex-col gap-4">
       <div className="mb-1">
-        <h2 className="text-[clamp(26px,3.4vw,40px)] leading-[1.02] mb-2">Cerebro de Brodita</h2>
-        <p className="text-ink-soft text-[14.5px] max-w-[66ch]">
-          Lo que Brodita sabe cuando le preguntás. Escribí acá adentro o importá tus notas de Obsidian: en cada respuesta usa los documentos activos que más se parecen a la pregunta.
-        </p>
+        <h2 className="text-[clamp(26px,3.4vw,40px)] leading-[1.02] mb-2">{titulo}</h2>
+        <p className="text-ink-soft text-[14.5px] max-w-[66ch]">{bajada}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

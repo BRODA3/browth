@@ -7,7 +7,7 @@ import { useBroda } from "./BrodaContext";
 export type Mode = "broda" | "clientes";
 export type View =
   | "northstar" | "businesscase" | "infra" | "estrategia" | "plan"
-  | "equipo" | "cerebro"
+  | "equipo" | "brains"
   | "pipeline" | "crm" | "workflows" | "playbooks" | "agentes" | "metricas";
 
 export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
@@ -17,12 +17,13 @@ export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "estrategia", label: "Estrategia", icon: "◈" },
   { id: "plan", label: "Plan de contenido", icon: "▦" },
   { id: "equipo", label: "Equipo", icon: "◍" },
-  { id: "cerebro", label: "Cerebro de Brodita", icon: "◉" },
+  { id: "brains", label: "Brains", icon: "◉" },
 ];
 
 export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "pipeline", label: "Pipeline", icon: "⧗" },
   { id: "crm", label: "CRM", icon: "▣" },
+  { id: "brains", label: "Brains", icon: "◉" },
   { id: "workflows", label: "Workflows", icon: "⑃" },
   { id: "playbooks", label: "Playbooks", icon: "▤" },
   { id: "agentes", label: "Agentes IA", icon: "◈" },
@@ -31,7 +32,7 @@ export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
 
 export const VIEW_LABEL: Record<View, string> = {
   northstar: "North Star", businesscase: "Business Case", infra: "Infraestructura comercial",
-  estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo", cerebro: "Cerebro de Brodita",
+  estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo", brains: "Brains",
   pipeline: "Pipeline", crm: "CRM", workflows: "Workflows", playbooks: "Playbooks", agentes: "Agentes IA", metricas: "Métricas",
 };
 

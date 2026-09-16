@@ -35,11 +35,13 @@ function resumen(a: AccionBrodita): string {
 }
 
 export default function BroditaChat({
-  mode, client, onAccion,
+  mode, client, onAccion, docs,
 }: {
   mode: Mode;
   client: Client | null;
   onAccion: (a: AccionBrodita) => string;
+  /** El cerebro que corresponde al modo: el de la cuenta o el de Broda. */
+  docs: DocCerebro[];
 }) {
   const { data } = useBroda();
   const [open, setOpen] = useState(false);
@@ -84,15 +86,15 @@ export default function BroditaChat({
     setInput("");
     setBusy(true);
     setAcciones([]);
-    const docs = buscarRelevantes(data.CEREBRO ?? [], text, 4);
-    setFuentes(docs);
+    const relevantes = buscarRelevantes(docs, text, 4);
+    setFuentes(relevantes);
     try {
       const res = await fetch("/api/brodita", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: next.filter((m) => !m.text.startsWith("✓ ")),
-          context: `${buildContext()}\n\nCerebro de Broda (usalo como fuente; no inventes por fuera de esto):\n${contextoDeDocs(docs)}`,
+          context: `${buildContext()}\n\nCerebro de Broda (usalo como fuente; no inventes por fuera de esto):\n${contextoDeDocs(relevantes)}`,
         }),
       });
       const json = await res.json();
@@ -125,7 +127,7 @@ export default function BroditaChat({
             <div className="flex-1">
               <div className="font-display font-extrabold text-[12px] uppercase">Brodita</div>
               <div className="text-[9.5px] text-ink-faint">
-                {mode === "clientes" && client ? client.name : "Cerebro de ventas y growth"} · {(data.CEREBRO ?? []).filter((d) => d.activo).length} docs
+                {mode === "clientes" && client ? client.name : "Cerebro de ventas y growth"} · {docs.filter((d) => d.activo).length} docs
               </div>
             </div>
             <button onClick={() => setOpen(false)} className="text-ink-faint hover:text-ink text-[13px] px-1">✕</button>

@@ -18,7 +18,8 @@ import { desdeBrodita } from "@/lib/workflows";
 import { nuevaOportunidad, FUENTES, ETAPAS, type EtapaId, type FuenteId } from "@/lib/crm";
 import { nuevoDoc, type TipoDoc } from "@/lib/cerebro";
 import { CANALES, type PiezaPlan } from "@/lib/broda";
-import { contextoDeDocs } from "@/lib/cerebro";
+import { contextoDeDocs, type DocCerebro } from "@/lib/cerebro";
+import Metricas from "./Metricas";
 import type { Workflow } from "@/lib/workflows";
 import { TopBar, SideNav, type Mode, type View } from "./Nav";
 import BroditaChat from "./BroditaChat";
@@ -33,7 +34,7 @@ import {
   type Client, type KpiRow, type StageId, type TaskStatus, type AgentStatusValue,
 } from "@/lib/data";
 
-const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "workflows", "agentes", "metricas"]);
+const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "workflows", "brains", "agentes", "metricas"]);
 
 function fmt(v: number | null | undefined) {
   return v == null ? "—" : v.toLocaleString("es-AR");
@@ -70,6 +71,7 @@ function AppInner() {
     kpisByClient?: Record<string, KpiRow[]>;
     crmByClient?: Record<string, Oportunidad[]>;
     workflowsByClient?: Record<string, Workflow[]>;
+    brainsByClient?: Record<string, DocCerebro[]>;
   }>({}), []);
 
   const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
@@ -93,14 +95,15 @@ function AppInner() {
 
   const [crmByClient, setCrmByClient] = useState<Record<string, Oportunidad[]>>(() => persisted.crmByClient ?? {});
   const [workflowsByClient, setWorkflowsByClient] = useState<Record<string, Workflow[]>>(() => persisted.workflowsByClient ?? {});
+  const [brainsByClient, setBrainsByClient] = useState<Record<string, DocCerebro[]>>(() => persisted.brainsByClient ?? {});
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient, workflowsByClient }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient, workflowsByClient, brainsByClient }));
     } catch {
       // localStorage no disponible (modo privado, cuota llena) — la app sigue funcionando en memoria.
     }
-  }, [clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient, workflowsByClient]);
+  }, [clients, taskStatusByClient, agentStatusByClient, kpisByClient, crmByClient, workflowsByClient, brainsByClient]);
 
   const client = clients.find((c) => c.id === selectedClientId)!;
   const taskStatus = taskStatusByClient[selectedClientId] || {};
@@ -151,8 +154,10 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskStatus]);
 
-  // Lo que Brodita sabe, listo para mandarle cuando construye algo.
-  const cerebroActivo = contextoDeDocs((brodaData.CEREBRO ?? []).filter((d) => d.activo), 1200);
+  // El cerebro que corresponde: en Clientes, el de la cuenta; en Broda, el de la marca.
+  const brainCliente = brainsByClient[selectedClientId] ?? [];
+  const docsActivos = mode === "clientes" ? brainCliente : (brodaData.CEREBRO ?? []);
+  const cerebroActivo = contextoDeDocs(docsActivos.filter((d) => d.activo), 1200);
 
 
   /** Lo que Brodita deja hecho cuando el equipo toca "Aplicar". */
@@ -213,7 +218,7 @@ function AppInner() {
     return "No supe qué hacer con eso.";
   }
 
-  const scoped = CLIENT_SCOPED.has(view);
+  const scoped = mode === "clientes" && CLIENT_SCOPED.has(view);
 
   return (
     <div className="min-h-screen">
@@ -279,7 +284,23 @@ function AppInner() {
               onChange={(f) => setWorkflowsByClient((prevState) => ({ ...prevState, [selectedClientId]: f }))}
             />
           )}
-          {view === "cerebro" && <Cerebro />}
+          {view === "brains" && (
+            mode === "clientes" ? (
+              <Cerebro
+                docs={brainCliente}
+                onChange={(docs) => setBrainsByClient((prevState) => ({ ...prevState, [selectedClientId]: docs }))}
+                titulo={`Brain de ${client.name}`}
+                bajada="Todo lo que Brodita sabe de esta cuenta: su oferta, sus clientes, sus objeciones y sus notas. Cuando estás en Clientes, responde con esto."
+              />
+            ) : (
+              <Cerebro
+                docs={brodaData.CEREBRO ?? []}
+                onChange={(docs) => updateBroda(["CEREBRO"], docs)}
+                titulo="Brain de BRODA"
+                bajada="Lo que Brodita sabe de la marca propia. Escribí acá adentro o importá tus notas de Obsidian: en cada respuesta usa los documentos activos que más se parecen a la pregunta."
+              />
+            )
+          )}
           {view === "equipo" && (
             <>
               <div className="mb-6">
@@ -300,10 +321,6 @@ function AppInner() {
           {view === "metricas" && (
             <Metricas
               kpis={kpis}
-              latest={latest}
-              prev={prev}
-              kpiMetric={kpiMetric}
-              setKpiMetric={setKpiMetric}
               onAddPeriod={(row) => setKpisByClient((prevState) => ({
                 ...prevState,
                 [selectedClientId]: [...(prevState[selectedClientId] || []).filter((k) => k.period !== row.period), row].sort((a, b) => (a.period < b.period ? -1 : 1)),
@@ -312,7 +329,7 @@ function AppInner() {
           )}
         </main>
       </div>
-      <BroditaChat mode={mode} client={client} onAccion={ejecutarAccion} />
+      <BroditaChat mode={mode} client={client} onAccion={ejecutarAccion} docs={docsActivos} />
     </div>
   );
 }
@@ -770,183 +787,6 @@ function Field({ k, v }: { k: string; v: string }) {
       <div className="text-[9.5px] uppercase tracking-wide text-ink-faint mb-0.5">{k}</div>
       <div className="text-xs text-ink-soft leading-snug">{v}</div>
     </div>
-  );
-}
-
-/* ---------------- METRICAS ---------------- */
-
-function Metricas({
-  kpis, latest, prev, kpiMetric, setKpiMetric, onAddPeriod,
-}: {
-  kpis: KpiRow[]; latest: KpiRow | null; prev: KpiRow | null;
-  kpiMetric: string; setKpiMetric: (m: string) => void;
-  onAddPeriod: (row: KpiRow) => void;
-}) {
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [showForm, setShowForm] = useState(false);
-
-  function delta(cur: number | null, p: number | null) {
-    if (cur == null || p == null || p === 0) return null;
-    return ((cur - p) / Math.abs(p)) * 100;
-  }
-
-  const metricLabel = KPI_FIELDS.find((f) => f.k === kpiMetric)?.l ?? "";
-  const serie = kpis.map((r) => (r as unknown as Record<string, number | null>)[kpiMetric]);
-  const embudo = latest
-    ? [
-        { label: "Leads", value: latest.leads ?? 0, color: "var(--get)" },
-        { label: "Reuniones", value: latest.meetings ?? 0, color: "var(--convert)" },
-        { label: "Propuestas", value: latest.proposals ?? 0, color: "var(--keep)" },
-        { label: "Cierres", value: latest.closes ?? 0, color: "var(--grow)" },
-      ]
-    : [];
-
-  if (!latest) {
-    return (
-      <Card>
-        <CardHeader title="Sin datos todavía" sub="Cargá el primer período para ver los KPIs, la tendencia y la composición del embudo." />
-        <PeriodoForm draft={draft} setDraft={setDraft} onAddPeriod={onAddPeriod} />
-      </Card>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Revenue" value={fmt(latest.revenue)} delta={delta(latest.revenue, prev?.revenue ?? null)} icon="$" />
-        <StatCard label="Cierres" value={fmt(latest.closes)} delta={delta(latest.closes, prev?.closes ?? null)} icon="✓" />
-        <StatCard label="Health score" value={fmt(latest.healthScore)} delta={delta(latest.healthScore, prev?.healthScore ?? null)} icon="◉" />
-        <StatCard label="NRR" value={fmt(latest.nrr)} unit="%" delta={delta(latest.nrr, prev?.nrr ?? null)} accent="var(--accent)" icon="%" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-4">
-        <Card>
-          <CardHeader
-            title="Tendencia"
-            sub={`${metricLabel} por período · ${kpis.length} períodos cargados`}
-            right={
-              <select
-                value={kpiMetric}
-                onChange={(e) => setKpiMetric(e.target.value)}
-                className="border border-border-strong rounded-[var(--r-md)] bg-bg text-ink px-3 py-1.5 text-[12px] outline-none focus:border-accent"
-              >
-                {KPI_FIELDS.map((f) => <option key={f.k} value={f.k}>{f.l}</option>)}
-              </select>
-            }
-          />
-          <AreaChart
-            points={serie}
-            labels={kpis.map((r) => r.period.slice(2))}
-            color="var(--accent)"
-            height={190}
-          />
-        </Card>
-
-        <Card>
-          <CardHeader title="Embudo del período" sub={latest.period} />
-          <div className="flex items-center gap-5">
-            <Donut
-              segments={embudo}
-              centerValue={fmt(latest.leads)}
-              centerLabel="Leads"
-              size={150}
-            />
-            <div className="flex flex-col gap-2.5 min-w-0 flex-1">
-              {embudo.map((s) => (
-                <div key={s.label} className="flex items-center gap-2 min-w-0">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
-                  <span className="text-[12px] text-ink-soft flex-1 truncate">{s.label}</span>
-                  <span className="tabular text-[13px] font-bold">{fmt(s.value)}</span>
-                </div>
-              ))}
-              <div className="flex items-center gap-2 pt-2.5 mt-0.5 border-t border-border">
-                <span className="text-[11.5px] text-ink-faint flex-1">Cierre sobre leads</span>
-                <span className="tabular text-[13px] font-bold text-accent">
-                  {latest.leads ? (((latest.closes ?? 0) / latest.leads) * 100).toFixed(1) : "—"}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <Card padded={false}>
-        <div className="flex items-center justify-between gap-4 px-5 pt-5 pb-4">
-          <div>
-            <h2 className="text-[17px] leading-tight m-0 normal-case tracking-tight font-display font-extrabold">Histórico</h2>
-            <p className="text-[12.5px] text-ink-faint mt-1">Un registro por período. Cargar de nuevo un período lo sobrescribe.</p>
-          </div>
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="shrink-0 bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors"
-          >
-            {showForm ? "Cerrar" : "+ Período"}
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="px-5 pb-5 border-b border-border">
-            <PeriodoForm draft={draft} setDraft={setDraft} onAddPeriod={(r) => { onAddPeriod(r); setShowForm(false); }} />
-          </div>
-        )}
-
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse tabular">
-            <thead>
-              <tr>
-                <Th>Período</Th>
-                {KPI_FIELDS.map((f) => <Th key={f.k}>{f.l}</Th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {[...kpis].reverse().map((r) => (
-                <tr key={r.period} className="hover:bg-surface-2/60 transition-colors">
-                  <Td className="font-semibold text-ink">{r.period}</Td>
-                  {KPI_FIELDS.map((f) => <Td key={f.k}>{fmt((r as unknown as Record<string, number | null>)[f.k])}</Td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function PeriodoForm({
-  draft, setDraft, onAddPeriod,
-}: {
-  draft: Record<string, string>; setDraft: (f: (d: Record<string, string>) => Record<string, string>) => void;
-  onAddPeriod: (row: KpiRow) => void;
-}) {
-  const field = "border border-border-strong rounded-[var(--r-md)] bg-bg text-ink px-2.5 py-2 text-[13px] outline-none focus:border-accent";
-  return (
-    <>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-        <label className="flex flex-col gap-1.5 text-[10.5px] text-ink-faint">
-          Período (AAAA-MM)
-          <input value={draft.period || ""} onChange={(e) => setDraft((d) => ({ ...d, period: e.target.value }))} placeholder="2026-09" className={field} />
-        </label>
-        {KPI_FIELDS.map((f) => (
-          <label key={f.k} className="flex flex-col gap-1.5 text-[10.5px] text-ink-faint">
-            {f.l}
-            <input type="number" step="any" value={draft[f.k] || ""} onChange={(e) => setDraft((d) => ({ ...d, [f.k]: e.target.value }))} className={field} />
-          </label>
-        ))}
-      </div>
-      <button
-        onClick={() => {
-          if (!/^\d{4}-\d{2}$/.test(draft.period || "")) return;
-          const row: KpiRow = { period: draft.period } as KpiRow;
-          KPI_FIELDS.forEach((f) => { (row as unknown as Record<string, number | null>)[f.k] = draft[f.k] ? Number(draft[f.k]) : null; });
-          onAddPeriod(row);
-          setDraft(() => ({}));
-        }}
-        className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors"
-      >
-        Guardar período
-      </button>
-    </>
   );
 }
 
