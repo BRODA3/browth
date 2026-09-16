@@ -20,8 +20,9 @@ import { nuevoDoc, type TipoDoc } from "@/lib/cerebro";
 import { CANALES, type PiezaPlan } from "@/lib/broda";
 import { contextoDeDocs, type DocCerebro } from "@/lib/cerebro";
 import Metricas from "./Metricas";
-import AgentesBoard from "./AgentesBoard";
-import { seedAgentes, type AgenteConfig } from "@/lib/agentes";
+import AgentesIA from "./AgentesIA";
+import PlanMes from "./PlanMes";
+import { normalizarAgentes, type AgenteConfig } from "@/lib/agentes";
 import type { Workflow } from "@/lib/workflows";
 import { TopBar, SideNav, type Mode, type View } from "./Nav";
 import BroditaChat from "./BroditaChat";
@@ -82,7 +83,7 @@ function AppInner() {
   const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
   const [selectedClientId, setSelectedClientId] = useState<string>((persisted.clients?.length ? persisted.clients : SEED_CLIENTS)[0].id);
   const [mode, setMode] = useState<Mode>("broda");
-  const [view, setView] = useState<View>("northstar");
+  const [view, setView] = useState<View>("planmes");
   const [openZone, setOpenZone] = useState<string | null>(null);
   const [playbookFilter, setPlaybookFilter] = useState<StageId | null>(null);
   const [agentFilter, setAgentFilter] = useState<StageId | null>(null);
@@ -132,15 +133,11 @@ function AppInner() {
     return { done, total: tasks.length, pct: tasks.length ? Math.round((done / tasks.length) * 100) : 0 };
   }
 
-  // Los agentes guardados con una versión vieja del modelo se completan solos.
-  const agentesCliente: AgenteConfig[] = (agentesByClient[selectedClientId] ?? seedAgentes()).map((x) => ({
-    ...x,
-    herramientas: x.herramientas ?? [],
-    conexiones: x.conexiones ?? [],
-    ejecuciones: x.ejecuciones ?? 0,
-    resueltas: x.resueltas ?? 0,
-    escaladas: x.escaladas ?? 0,
-  }));
+  // La red de agentes de la cuenta; lo guardado con un modelo viejo se completa solo.
+  const agentesCliente: AgenteConfig[] = useMemo(
+    () => normalizarAgentes(agentesByClient[selectedClientId]),
+    [agentesByClient, selectedClientId]
+  );
 
   function agentAdoptionByStage(stageId: StageId) {
     const delMotor = agentesCliente.filter((a) => a.etapa === stageId);
@@ -218,12 +215,12 @@ function AppInner() {
     return "No supe qué hacer con eso.";
   }
 
-  const scoped = mode === "clientes" && CLIENT_SCOPED.has(view);
+  const scoped = mode === "clientes" && CLIENT_SCOPED.has(view) && view !== "agentes";
   const completa = PANTALLA_COMPLETA.has(view);
 
   return (
     <div className="min-h-screen">
-      <TopBar mode={mode} view={view} onSetMode={(m) => { setMode(m); setView(m === "broda" ? "northstar" : "pipeline"); }} />
+      <TopBar mode={mode} view={view} onSetMode={(m) => { setMode(m); setView(m === "broda" ? "planmes" : "pipeline"); }} />
       <div className="flex">
         <SideNav
           mode={mode}
@@ -253,6 +250,7 @@ function AppInner() {
           )}
           {view === "playbooks" && <NavHeader view={view} />}
 
+          {view === "planmes" && <PlanMes />}
           {view === "northstar" && <NorthStar />}
           {view === "businesscase" && <BusinessCase />}
           {view === "infra" && <InfraFunnel />}
@@ -314,7 +312,7 @@ function AppInner() {
           )}
           {view === "playbooks" && <Mapa taskCompletion={taskCompletion} />}
           {view === "agentes" && (
-            <AgentesBoard
+            <AgentesIA
               agentes={agentesCliente}
               onChange={(next) => setAgentesByClient((prevState) => ({ ...prevState, [selectedClientId]: next }))}
               cerebro={cerebroActivo}

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { setPath, type PathKey } from "@/lib/setPath";
 import { SEED_CEREBRO, type DocCerebro } from "@/lib/cerebro";
+import { PLAN_MES } from "@/lib/planMes";
 import {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
   EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
@@ -17,6 +18,7 @@ const DEFAULT_DATA = {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
   EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
   CEREBRO: SEED_CEREBRO as DocCerebro[],
+  PLAN_MES,
 };
 
 export type BrodaData = typeof DEFAULT_DATA;
