@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardHeader, StatCard, AreaChart } from "./ui";
+import { Card, CardHeader, Delta } from "./ui";
 import { KPI_FIELDS, METRICAS_DERIVADAS, derivadas, type KpiRow } from "@/lib/data";
 
-// Métricas de la cuenta: lo que se carga (pauta, leads, reuniones, propuestas,
-// cierres, ingresos) y lo que sale de dividirlo — costo por lead, CAC, ticket,
-// ROAS y las conversiones del embudo, que es donde se ve el cuello.
+// Overview de la cuenta: los números que importan, con su tendencia al lado.
+// Hoy se cargan a mano; cuando estén conectadas las fuentes (Meta Ads, el CRM)
+// esta misma pantalla se llena sola.
 
 const num = (v: number | null | undefined, dec = 0) =>
   v == null ? "—" : v.toLocaleString("es-AR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const money = (v: number | null | undefined) => (v == null ? "—" : `$${num(v)}`);
+const moneyCorto = (v: number) => (Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${Math.round(v)}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`);
 const veces = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(2)}x`);
 
@@ -19,174 +20,378 @@ function delta(cur: number | null | undefined, prev: number | null | undefined) 
   return ((cur - prev) / Math.abs(prev)) * 100;
 }
 
+const FUENTES = [
+  { nombre: "Meta Ads", detalle: "Inversión, CPL y creativos" },
+  { nombre: "CRM", detalle: "Leads, reuniones y cierres" },
+  { nombre: "Analytics", detalle: "Tráfico y conversiones web" },
+];
+
 export default function Metricas({ kpis, onAddPeriod }: { kpis: KpiRow[]; onAddPeriod: (r: KpiRow) => void }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState(false);
-  const [metrica, setMetrica] = useState<string>("leads");
+  const [verHistorico, setVerHistorico] = useState(false);
+  const [metrica, setMetrica] = useState<string>("cpl");
 
   const latest = kpis[kpis.length - 1] ?? null;
   const prev = kpis.length > 1 ? kpis[kpis.length - 2] : null;
-
-  if (!latest) {
-    return (
-      <Card>
-        <CardHeader
-          title="Sin datos todavía"
-          sub="Cargá el primer período con la inversión en pauta y lo que pasó en el embudo. Con dos períodos ya se puede leer la tendencia."
-        />
-        <PeriodoForm draft={draft} setDraft={setDraft} onAddPeriod={onAddPeriod} />
-      </Card>
-    );
-  }
-
-  const d = derivadas(latest);
+  const d = latest ? derivadas(latest) : null;
   const dPrev = prev ? derivadas(prev) : null;
 
-  const embudo = [
-    { label: "Leads", valor: latest.leads, conv: null as number | null },
-    { label: "Reuniones", valor: latest.meetings, conv: d.tasaCalificacion },
-    { label: "Propuestas", valor: latest.proposals, conv: latest.meetings && latest.proposals != null ? latest.proposals / latest.meetings : null },
-    { label: "Cierres", valor: latest.closes, conv: d.tasaCierre },
-  ];
-  const tope = Math.max(1, latest.leads ?? 0);
+  const serieDe = (k: string): (number | null)[] =>
+    KPI_FIELDS.some((f) => f.k === k)
+      ? kpis.map((r) => (r as unknown as Record<string, number | null>)[k])
+      : kpis.map((r) => (derivadas(r) as unknown as Record<string, number | null>)[k]);
 
-  const serieDe = (k: string): (number | null)[] => {
-    if (KPI_FIELDS.some((f) => f.k === k)) return kpis.map((r) => (r as unknown as Record<string, number | null>)[k]);
-    return kpis.map((r) => (derivadas(r) as unknown as Record<string, number | null>)[k]);
-  };
   const tipoDe = (k: string) => METRICAS_DERIVADAS.find((m) => m.k === k)?.tipo;
   const formatoDe = (k: string) => {
     const t = tipoDe(k);
     if (t === "pct") return (n: number) => `${(n * 100).toFixed(0)}%`;
     if (t === "veces") return (n: number) => `${n.toFixed(1)}x`;
-    if (t === "moneda" || k === "adSpend" || k === "revenue") return (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
-    return undefined;
+    if (t === "moneda" || k === "adSpend" || k === "revenue") return moneyCorto;
+    return (n: number) => Math.round(n).toLocaleString("es-AR");
   };
   const etiquetaMetrica =
     KPI_FIELDS.find((f) => f.k === metrica)?.l ?? METRICAS_DERIVADAS.find((m) => m.k === metrica)?.l ?? "";
 
+  const embudo = latest
+    ? [
+        { label: "Leads", valor: latest.leads, conv: null as number | null },
+        { label: "Reuniones", valor: latest.meetings, conv: d!.tasaCalificacion },
+        { label: "Propuestas", valor: latest.proposals, conv: latest.meetings && latest.proposals != null ? latest.proposals / latest.meetings : null },
+        { label: "Cierres", valor: latest.closes, conv: d!.tasaCierre },
+      ]
+    : [];
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Inversión en pauta" value={money(latest.adSpend)} delta={delta(latest.adSpend, prev?.adSpend)} icon="◈" />
-        <StatCard label="Leads" value={num(latest.leads)} delta={delta(latest.leads, prev?.leads)} icon="◎" />
-        <StatCard label="Costo por lead" value={money(d.cpl)} delta={delta(d.cpl, dPrev?.cpl)} icon="$" />
-        <StatCard label="ROAS" value={veces(d.roas)} delta={delta(d.roas, dPrev?.roas)} accent="var(--accent)" icon="↗" />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Cierres" value={num(latest.closes)} delta={delta(latest.closes, prev?.closes)} icon="✓" />
-        <StatCard label="Costo por cliente" value={money(d.cac)} delta={delta(d.cac, dPrev?.cac)} icon="◉" />
-        <StatCard label="Ticket promedio" value={money(d.ticket)} delta={delta(d.ticket, dPrev?.ticket)} icon="▤" />
-        <StatCard label="Lead → cliente" value={pct(d.leadACliente)} delta={delta(d.leadACliente, dPrev?.leadACliente)} icon="%" />
-      </div>
-
-      <Lectura latest={latest} d={d} dPrev={dPrev} embudo={embudo} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1.45fr_1fr] gap-4">
-        <Card>
-          <CardHeader
-            title="Tendencia"
-            sub={`${etiquetaMetrica} por período · ${kpis.length} ${kpis.length === 1 ? "período cargado" : "períodos cargados"}`}
-            right={
-              <select
-                value={metrica}
-                onChange={(e) => setMetrica(e.target.value)}
-                className="border border-border-strong rounded-[var(--r-md)] bg-bg text-ink px-3 py-1.5 text-[12px] outline-none focus:border-accent"
-              >
-                <optgroup label="Cargadas">
-                  {KPI_FIELDS.map((f) => <option key={f.k} value={f.k}>{f.l}</option>)}
-                </optgroup>
-                <optgroup label="Calculadas">
-                  {METRICAS_DERIVADAS.map((m) => <option key={m.k} value={m.k}>{m.l}</option>)}
-                </optgroup>
-              </select>
-            }
-          />
-          <AreaChart
-            points={serieDe(metrica)}
-            labels={kpis.map((r) => r.period.slice(2))}
-            color="var(--accent)"
-            height={210}
-            valueFormat={formatoDe(metrica)}
-          />
-        </Card>
-
-        <Card>
-          <CardHeader title="El embudo del período" sub={`${latest.period} · dónde se cae la gente`} />
-          <div className="flex flex-col gap-4">
-            {embudo.map((e) => (
-              <div key={e.label}>
-                <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                  <span className="text-[12.5px] text-ink-soft">{e.label}</span>
-                  <span className="tabular text-[14px] font-bold">{num(e.valor)}</span>
-                </div>
-                <div className="h-2.5 rounded-full bg-surface-3 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-[width] duration-500"
-                    style={{ width: `${Math.max(2, ((e.valor ?? 0) / tope) * 100)}%`, background: "var(--accent)" }}
-                  />
-                </div>
-                {e.conv != null && (
-                  <div className="text-[10.5px] text-ink-faint mt-1">{pct(e.conv)} del paso anterior</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <Card padded={false}>
-        <div className="flex items-center justify-between gap-4 px-5 pt-5 pb-4">
-          <div>
-            <h2 className="text-[17px] leading-tight m-0 normal-case tracking-tight font-display font-extrabold">Histórico</h2>
-            <p className="text-[12.5px] text-ink-faint mt-1">Un registro por período. Cargar de nuevo un período lo sobrescribe.</p>
-          </div>
+      {/* Cabecera del overview */}
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <div className="eyebrow mb-1.5">Overview</div>
+          <h2 className="text-[clamp(22px,2.6vw,30px)] leading-none m-0">
+            {latest ? latest.period : "Sin período cargado"}
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11.5px] text-ink-faint">
+            {kpis.length} {kpis.length === 1 ? "período" : "períodos"}
+          </span>
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="shrink-0 bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors"
+            className="border border-border-strong rounded-[var(--r-md)] px-3.5 py-2 text-[11.5px] text-ink-soft hover:text-ink hover:border-ink-faint transition-colors"
           >
             {showForm ? "Cerrar" : "+ Período"}
           </button>
         </div>
+      </div>
 
-        {showForm && (
-          <div className="px-5 pb-5 border-b border-border">
-            <PeriodoForm draft={draft} setDraft={setDraft} onAddPeriod={(r) => { onAddPeriod(r); setShowForm(false); }} />
-          </div>
-        )}
+      {showForm && (
+        <Card>
+          <CardHeader title="Cargar período" sub="Mientras las fuentes no estén conectadas, se carga a mano. Cargar de nuevo un período lo sobrescribe." />
+          <PeriodoForm draft={draft} setDraft={setDraft} onAddPeriod={(r) => { onAddPeriod(r); setShowForm(false); }} />
+        </Card>
+      )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse tabular min-w-[860px]">
-            <thead>
-              <tr>
-                <Th>Período</Th>
-                {KPI_FIELDS.map((f) => <Th key={f.k}>{f.l}</Th>)}
-                <Th>CPL</Th><Th>CAC</Th><Th>ROAS</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...kpis].reverse().map((r) => {
-                const x = derivadas(r);
+      {/* Los cuatro números que mandan, con su tendencia al lado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Hero label="Inversión en pauta" valor={money(latest?.adSpend)} delta={delta(latest?.adSpend, prev?.adSpend)} serie={serieDe("adSpend")} invertido />
+        <Hero label="Leads" valor={num(latest?.leads)} delta={delta(latest?.leads, prev?.leads)} serie={serieDe("leads")} />
+        <Hero label="Costo por lead" valor={money(d?.cpl)} delta={delta(d?.cpl, dPrev?.cpl)} serie={serieDe("cpl")} invertido />
+        <Hero label="ROAS" valor={veces(d?.roas)} delta={delta(d?.roas, dPrev?.roas)} serie={serieDe("roas")} destacado />
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <Chico label="Cierres" valor={num(latest?.closes)} delta={delta(latest?.closes, prev?.closes)} />
+        <Chico label="Costo por cliente" valor={money(d?.cac)} delta={delta(d?.cac, dPrev?.cac)} invertido />
+        <Chico label="Ticket promedio" valor={money(d?.ticket)} delta={delta(d?.ticket, dPrev?.ticket)} />
+        <Chico label="Lead → cliente" valor={pct(d?.leadACliente)} delta={delta(d?.leadACliente, dPrev?.leadACliente)} />
+      </div>
+
+      {/* Plata que entra contra plata que sale */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4">
+        <Card>
+          <CardHeader
+            title="Pauta e ingresos"
+            sub="Lo que se invierte contra lo que vuelve, período a período."
+            right={<Leyenda />}
+          />
+          {kpis.length === 0 ? (
+            <Vacio alto={230} texto="Cargá un período para ver la comparación." />
+          ) : (
+            <Comparada
+              a={{ nombre: "Inversión", valores: serieDe("adSpend"), color: "var(--ink-faint)" }}
+              b={{ nombre: "Ingresos", valores: serieDe("revenue"), color: "var(--accent)" }}
+              labels={kpis.map((r) => r.period.slice(2))}
+            />
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader title="El embudo" sub={latest ? `${latest.period} · dónde se cae la gente` : "Sin datos"} />
+          {!latest ? (
+            <Vacio alto={230} texto="Sin datos del embudo." />
+          ) : (
+            <div className="flex flex-col gap-3.5">
+              {embudo.map((e) => {
+                const tope = Math.max(1, latest.leads ?? 0);
                 return (
-                  <tr key={r.period} className="hover:bg-surface-2/60 transition-colors">
-                    <Td className="font-semibold text-ink">{r.period}</Td>
-                    <Td>{money(r.adSpend)}</Td>
-                    <Td>{num(r.leads)}</Td>
-                    <Td>{num(r.meetings)}</Td>
-                    <Td>{num(r.proposals)}</Td>
-                    <Td>{num(r.closes)}</Td>
-                    <Td>{money(r.revenue)}</Td>
-                    <Td>{money(x.cpl)}</Td>
-                    <Td>{money(x.cac)}</Td>
-                    <Td className={x.roas != null && x.roas < 1 ? "text-critical" : "text-accent"}>{veces(x.roas)}</Td>
-                  </tr>
+                  <div key={e.label}>
+                    <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                      <span className="text-[12.5px] text-ink-soft">{e.label}</span>
+                      <span className="tabular text-[14px] font-bold">{num(e.valor)}</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-surface-3 overflow-hidden">
+                      <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.max(2, ((e.valor ?? 0) / tope) * 100)}%`, background: "var(--accent)" }} />
+                    </div>
+                    {e.conv != null && <div className="text-[10.5px] text-ink-faint mt-1">{pct(e.conv)} del paso anterior</div>}
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {latest && d && <Lectura latest={latest} d={d} dPrev={dPrev} embudo={embudo} />}
+
+      {/* Tendencia de cualquier métrica */}
+      <Card>
+        <CardHeader
+          title="Tendencia"
+          sub={`${etiquetaMetrica} por período`}
+          right={
+            <select
+              value={metrica}
+              onChange={(e) => setMetrica(e.target.value)}
+              className="border border-border-strong rounded-[var(--r-md)] bg-bg text-ink px-3 py-1.5 text-[12px] outline-none focus:border-accent"
+            >
+              <optgroup label="Calculadas">
+                {METRICAS_DERIVADAS.map((m) => <option key={m.k} value={m.k}>{m.l}</option>)}
+              </optgroup>
+              <optgroup label="Cargadas">
+                {KPI_FIELDS.map((f) => <option key={f.k} value={f.k}>{f.l}</option>)}
+              </optgroup>
+            </select>
+          }
+        />
+        {kpis.length === 0 ? (
+          <Vacio alto={200} texto="Sin datos todavía." />
+        ) : (
+          <Barras valores={serieDe(metrica)} labels={kpis.map((r) => r.period.slice(2))} formato={formatoDe(metrica)} />
+        )}
+      </Card>
+
+      {/* Fuentes: de acá va a salir todo esto solo */}
+      <Card>
+        <CardHeader title="Fuentes de datos" sub="Conectadas, estos números dejan de cargarse a mano y se actualizan solos." />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {FUENTES.map((f) => (
+            <div key={f.nombre} className="border border-border rounded-[var(--r-md)] p-3.5 bg-surface-2/50">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-[13px]">{f.nombre}</span>
+                <span className="text-[9.5px] font-display font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full border border-border-strong text-ink-faint">Sin conectar</span>
+              </div>
+              <div className="text-[11.5px] text-ink-faint mt-1">{f.detalle}</div>
+            </div>
+          ))}
         </div>
       </Card>
+
+      {/* El histórico, que ya no es la pantalla principal */}
+      <div>
+        <button
+          onClick={() => setVerHistorico((v) => !v)}
+          className="text-[12px] text-ink-faint hover:text-ink border border-border-strong rounded-[var(--r-md)] px-3.5 py-2 transition-colors"
+        >
+          {verHistorico ? "Ocultar histórico" : `Ver histórico (${kpis.length})`}
+        </button>
+
+        {verHistorico && kpis.length > 0 && (
+          <Card padded={false} className="mt-3">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse tabular min-w-[860px]">
+                <thead>
+                  <tr>
+                    <Th>Período</Th>
+                    {KPI_FIELDS.map((f) => <Th key={f.k}>{f.l}</Th>)}
+                    <Th>CPL</Th><Th>CAC</Th><Th>ROAS</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...kpis].reverse().map((r) => {
+                    const x = derivadas(r);
+                    return (
+                      <tr key={r.period} className="hover:bg-surface-2/60 transition-colors">
+                        <Td className="font-semibold text-ink">{r.period}</Td>
+                        <Td>{money(r.adSpend)}</Td>
+                        <Td>{num(r.leads)}</Td>
+                        <Td>{num(r.meetings)}</Td>
+                        <Td>{num(r.proposals)}</Td>
+                        <Td>{num(r.closes)}</Td>
+                        <Td>{money(r.revenue)}</Td>
+                        <Td>{money(x.cpl)}</Td>
+                        <Td>{money(x.cac)}</Td>
+                        <Td className={x.roas != null && x.roas < 1 ? "text-critical" : "text-accent"}>{veces(x.roas)}</Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Piezas del overview ---------------- */
+
+function Hero({
+  label, valor, delta: dlt, serie, destacado, invertido,
+}: {
+  label: string; valor: string; delta: number | null; serie: (number | null)[]; destacado?: boolean; invertido?: boolean;
+}) {
+  return (
+    <div className={`rounded-[var(--r-lg)] border p-5 flex flex-col gap-1 min-w-0 ${destacado ? "border-accent/40 bg-accent/[0.05]" : "border-border bg-surface"}`}>
+      <span className="text-[11.5px] text-ink-soft truncate">{label}</span>
+      <div className="tabular font-extrabold text-[30px] leading-none tracking-tight mt-1" style={destacado ? { color: "var(--accent)" } : undefined}>
+        {valor}
+      </div>
+      <div className="mt-2"><Delta value={invertido && dlt != null ? -dlt : dlt} suffix={invertido ? "vs. anterior (menos es mejor)" : "vs. período anterior"} /></div>
+      <Sparkline valores={serie} color={destacado ? "var(--accent)" : "var(--ink-soft)"} />
+    </div>
+  );
+}
+
+function Chico({ label, valor, delta: dlt, invertido }: { label: string; valor: string; delta: number | null; invertido?: boolean }) {
+  return (
+    <div className="rounded-[var(--r-lg)] border border-border bg-surface p-4 min-w-0">
+      <div className="text-[11.5px] text-ink-soft truncate">{label}</div>
+      <div className="tabular font-extrabold text-[22px] leading-none tracking-tight mt-1.5">{valor}</div>
+      <div className="mt-1.5"><Delta value={invertido && dlt != null ? -dlt : dlt} suffix="" /></div>
+    </div>
+  );
+}
+
+/** Línea chiquita de tendencia, la que va adentro de cada tarjeta. */
+function Sparkline({ valores, color }: { valores: (number | null)[]; color: string }) {
+  const puntos = valores.filter((v): v is number => v != null);
+  if (puntos.length < 2) return <div className="h-9 mt-2" />;
+  const min = Math.min(...puntos), max = Math.max(...puntos);
+  const rango = max - min || 1;
+  const w = 220, h = 36;
+  const paso = w / (puntos.length - 1);
+  const d = puntos.map((v, i) => `${i === 0 ? "M" : "L"}${i * paso},${h - ((v - min) / rango) * (h - 6) - 3}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-9 mt-2" preserveAspectRatio="none">
+      <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+    </svg>
+  );
+}
+
+/** Dos series en el mismo gráfico: lo que sale y lo que entra. */
+function Comparada({
+  a, b, labels,
+}: {
+  a: { nombre: string; valores: (number | null)[]; color: string };
+  b: { nombre: string; valores: (number | null)[]; color: string };
+  labels: string[];
+}) {
+  const w = 680, h = 240, padL = 52, padR = 14, padT = 14, padB = 26;
+  const todos = [...a.valores, ...b.valores].filter((v): v is number => v != null);
+  const max = Math.max(1, ...todos);
+  const paso = (w - padL - padR) / Math.max(1, labels.length - 1);
+  const y = (v: number) => padT + (h - padT - padB) - (v / max) * (h - padT - padB);
+
+  const linea = (vals: (number | null)[]) =>
+    vals.map((v, i) => (v == null ? "" : `${i === 0 ? "M" : "L"}${padL + i * paso},${y(v)}`)).join(" ");
+
+  const area = (vals: (number | null)[]) => {
+    const pts = vals.map((v, i) => (v == null ? null : [padL + i * paso, y(v)] as [number, number])).filter(Boolean) as [number, number][];
+    if (pts.length === 0) return "";
+    const base = h - padB;
+    return `M${pts[0][0]},${base} ${pts.map(([x, yy]) => `L${x},${yy}`).join(" ")} L${pts[pts.length - 1][0]},${base} Z`;
+  };
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto">
+      <defs>
+        <linearGradient id="grad-ingresos" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0, 1, 2, 3].map((g) => {
+        const yy = padT + (h - padT - padB) * (1 - g / 3);
+        return (
+          <g key={g}>
+            <line x1={padL} y1={yy} x2={w - padR} y2={yy} stroke="var(--border)" />
+            <text x={padL - 8} y={yy + 3.5} textAnchor="end" fontSize="9.5" fill="var(--ink-faint)" className="tabular">
+              {moneyCorto((max * g) / 3)}
+            </text>
+          </g>
+        );
+      })}
+      <path d={area(b.valores)} fill="url(#grad-ingresos)" />
+      <path d={linea(a.valores)} fill="none" stroke={a.color} strokeWidth={2} strokeDasharray="5 4" />
+      <path d={linea(b.valores)} fill="none" stroke={b.color} strokeWidth={2.5} strokeLinejoin="round" />
+      {labels.map((l, i) => (
+        <text key={i} x={padL + i * paso} y={h - 7} textAnchor="middle" fontSize="9.5" fill="var(--ink-faint)" className="tabular">{l}</text>
+      ))}
+    </svg>
+  );
+}
+
+function Leyenda() {
+  return (
+    <div className="flex items-center gap-3 text-[10.5px] text-ink-faint">
+      <span className="flex items-center gap-1.5"><span className="w-4 h-0 border-t-2 border-dashed" style={{ borderColor: "var(--ink-faint)" }} /> Inversión</span>
+      <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded" style={{ background: "var(--accent)" }} /> Ingresos</span>
+    </div>
+  );
+}
+
+/** Barras por período, para la métrica que se elija. */
+function Barras({ valores, labels, formato }: { valores: (number | null)[]; labels: string[]; formato: (n: number) => string }) {
+  const w = 900, h = 220, padB = 30, padT = 24;
+  const conocidos = valores.filter((v): v is number => v != null);
+  const max = Math.max(1, ...conocidos);
+  const ancho = Math.min(70, (w / Math.max(1, valores.length)) * 0.55);
+  const paso = w / Math.max(1, valores.length);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto">
+      <line x1={0} y1={h - padB} x2={w} y2={h - padB} stroke="var(--border)" />
+      {valores.map((v, i) => {
+        const cx = paso * i + paso / 2;
+        if (v == null) return <text key={i} x={cx} y={h - padB - 8} textAnchor="middle" fontSize="10" fill="var(--ink-faint)">—</text>;
+        const alto = Math.max(3, (v / max) * (h - padB - padT));
+        const ultimo = i === valores.length - 1;
+        return (
+          <g key={i}>
+            <rect
+              x={cx - ancho / 2} y={h - padB - alto} width={ancho} height={alto} rx={5}
+              fill={ultimo ? "var(--accent)" : "var(--surface-3)"}
+              stroke={ultimo ? "var(--accent)" : "var(--border-strong)"}
+            />
+            <text x={cx} y={h - padB - alto - 7} textAnchor="middle" fontSize="10.5" fill={ultimo ? "var(--accent)" : "var(--ink-soft)"} className="tabular">
+              {formato(v)}
+            </text>
+          </g>
+        );
+      })}
+      {labels.map((l, i) => (
+        <text key={i} x={paso * i + paso / 2} y={h - 9} textAnchor="middle" fontSize="9.5" fill="var(--ink-faint)" className="tabular">{l}</text>
+      ))}
+    </svg>
+  );
+}
+
+function Vacio({ alto, texto }: { alto: number; texto: string }) {
+  return (
+    <div className="flex items-center justify-center border border-dashed border-border-strong rounded-[var(--r-md)] text-[12.5px] text-ink-faint" style={{ height: alto }}>
+      {texto}
     </div>
   );
 }
