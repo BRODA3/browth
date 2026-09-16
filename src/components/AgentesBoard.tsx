@@ -102,7 +102,7 @@ export default function AgentesBoard({
               setSelId(null);
             }
           }}
-          className="relative h-[660px] overflow-hidden rounded-[var(--r-lg)] border border-border bg-[#0d0d0d] cursor-grab active:cursor-grabbing"
+          className="relative h-[calc(100vh-215px)] min-h-[460px] overflow-hidden rounded-[var(--r-lg)] border border-border bg-[#0d0d0d] cursor-grab active:cursor-grabbing"
         >
           {/* Piso en perspectiva */}
           <div data-fondo="1" className="absolute inset-0 ag-piso" />
@@ -247,7 +247,7 @@ function Panel({
         <button onClick={onClose} className="text-ink-faint hover:text-ink text-[16px] leading-none">×</button>
       </div>
 
-      <div className="p-4 flex flex-col gap-3 max-h-[600px] overflow-y-auto">
+      <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-275px)] overflow-y-auto">
         <input
           value={agente.nombre}
           onChange={(e) => set("nombre", e.target.value)}

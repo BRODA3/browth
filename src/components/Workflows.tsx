@@ -166,7 +166,7 @@ function Tablero({ wf, onChange, onDelete }: { wf: Workflow; onChange: (w: Workf
         onPointerMove={(ev) => conectando && setMouse(aTablero(ev))}
         onKeyDown={(ev) => ev.key === "Escape" && setConectando(null)}
         tabIndex={0}
-        className="relative h-[620px] overflow-hidden rounded-[var(--r-lg)] border border-border bg-surface-2/40 outline-none cursor-grab active:cursor-grabbing"
+        className="relative h-[calc(100vh-260px)] min-h-[440px] overflow-hidden rounded-[var(--r-lg)] border border-border bg-surface-2/40 outline-none cursor-grab active:cursor-grabbing"
         style={{
           backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)",
           backgroundSize: `${24 * escala}px ${24 * escala}px`,

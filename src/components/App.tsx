@@ -38,6 +38,9 @@ import {
 
 const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "workflows", "brains", "agentes", "metricas"]);
 
+/** Vistas de tablero: ocupan todo el ancho y todo el alto de la pantalla. */
+const PANTALLA_COMPLETA = new Set<View>(["workflows", "agentes"]);
+
 function fmt(v: number | null | undefined) {
   return v == null ? "—" : v.toLocaleString("es-AR");
 }
@@ -208,6 +211,7 @@ function AppInner() {
   }
 
   const scoped = mode === "clientes" && CLIENT_SCOPED.has(view);
+  const completa = PANTALLA_COMPLETA.has(view);
 
   return (
     <div className="min-h-screen">
@@ -222,9 +226,9 @@ function AppInner() {
           onSelectClient={(id) => { setSelectedClientId(id); setOpenZone(null); }}
           onAddClient={addClient}
         />
-        <main className="flex-1 min-w-0 px-8 py-8 pb-24 max-w-[1240px]">
+        <main className={`flex-1 min-w-0 ${completa ? "px-4 py-4 pb-6 max-w-none" : "px-8 py-8 pb-24 max-w-[1240px]"}`}>
           {scoped && (
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-7">
+            <div className={`flex items-center justify-between flex-wrap gap-3 ${completa ? "mb-3" : "mb-7"}`}>
               <div className="flex items-center gap-3.5 min-w-0">
                 <span className="w-11 h-11 rounded-full bg-accent text-accent-ink flex items-center justify-center font-display font-black text-[17px] shrink-0">
                   {client.name.charAt(0)}

@@ -3,8 +3,7 @@
   "configurations": [
     {
       "name": "browth-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "url": "http://localhost:3000",
       "port": 3000
     }
   ]
