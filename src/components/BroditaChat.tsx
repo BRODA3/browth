@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useBroda } from "./BrodaContext";
 import type { Mode } from "./Nav";
 import type { Client } from "@/lib/data";
+import { buscarRelevantes, contextoDeDocs, type DocCerebro } from "@/lib/cerebro";
 
 interface ChatMsg {
   role: "user" | "assistant";
@@ -16,6 +17,7 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [fuentes, setFuentes] = useState<DocCerebro[]>([]);
 
   function buildContext(): string {
     if (mode === "clientes" && client) {
@@ -40,11 +42,16 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
     setMessages(next);
     setInput("");
     setBusy(true);
+    const docs = buscarRelevantes(data.CEREBRO ?? [], text, 4);
+    setFuentes(docs);
     try {
       const res = await fetch("/api/brodita", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, context: buildContext() }),
+        body: JSON.stringify({
+          messages: next,
+          context: `${buildContext()}\n\nCerebro de Broda (usalo como fuente; no inventes por fuera de esto):\n${contextoDeDocs(docs)}`,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error de Brodita");
@@ -93,6 +100,13 @@ export default function BroditaChat({ mode, client }: { mode: Mode; client: Clie
               </div>
             ))}
             {busy && <div className="self-start text-[12px] text-ink-faint italic">Brodita está pensando…</div>}
+            {!busy && fuentes.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {fuentes.map((f) => (
+                  <span key={f.id} className="text-[9.5px] px-1.5 py-0.5 rounded-full border border-border-strong text-ink-faint">{f.titulo}</span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 p-3 border-t border-border bg-surface">

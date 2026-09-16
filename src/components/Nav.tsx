@@ -7,7 +7,7 @@ import { useBroda } from "./BrodaContext";
 export type Mode = "broda" | "clientes";
 export type View =
   | "northstar" | "businesscase" | "infra" | "estrategia" | "plan"
-  | "equipo"
+  | "equipo" | "cerebro"
   | "pipeline" | "crm" | "workflows" | "playbooks" | "agentes" | "metricas";
 
 export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
@@ -17,6 +17,7 @@ export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "estrategia", label: "Estrategia", icon: "◈" },
   { id: "plan", label: "Plan de contenido", icon: "▦" },
   { id: "equipo", label: "Equipo", icon: "◍" },
+  { id: "cerebro", label: "Cerebro de Brodita", icon: "◉" },
 ];
 
 export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
@@ -30,7 +31,7 @@ export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
 
 export const VIEW_LABEL: Record<View, string> = {
   northstar: "North Star", businesscase: "Business Case", infra: "Infraestructura comercial",
-  estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo",
+  estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo", cerebro: "Cerebro de Brodita",
   pipeline: "Pipeline", crm: "CRM", workflows: "Workflows", playbooks: "Playbooks", agentes: "Agentes IA", metricas: "Métricas",
 };
 

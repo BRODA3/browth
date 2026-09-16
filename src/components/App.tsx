@@ -12,6 +12,8 @@ import PlanContenido from "./PlanContenido";
 import Crm from "./Crm";
 import type { Oportunidad } from "@/lib/crm";
 import Workflows from "./Workflows";
+import Cerebro from "./Cerebro";
+import { contextoDeDocs } from "@/lib/cerebro";
 import type { Workflow } from "@/lib/workflows";
 import { TopBar, SideNav, type Mode, type View } from "./Nav";
 import BroditaChat from "./BroditaChat";
@@ -32,7 +34,7 @@ function fmt(v: number | null | undefined) {
   return v == null ? "—" : v.toLocaleString("es-AR");
 }
 
-const STORAGE_KEY = "browth:v1";
+const STORAGE_KEY = "browth:v2";
 
 function loadPersisted<T>(fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -55,6 +57,7 @@ export default function App() {
 }
 
 function AppInner() {
+  const { data: brodaData } = useBroda();
   const persisted = useMemo(() => loadPersisted<{
     clients?: Client[];
     taskStatusByClient?: Record<string, Record<string, TaskStatus>>;
@@ -143,6 +146,9 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskStatus]);
 
+  // Lo que Brodita sabe, listo para mandarle cuando construye algo.
+  const cerebroActivo = contextoDeDocs((brodaData.CEREBRO ?? []).filter((d) => d.activo), 1200);
+
   const scoped = CLIENT_SCOPED.has(view);
 
   return (
@@ -204,9 +210,12 @@ function AppInner() {
           {view === "workflows" && (
             <Workflows
               flows={workflowsByClient[selectedClientId] ?? []}
+              cerebro={cerebroActivo}
+              cuenta={client.name}
               onChange={(f) => setWorkflowsByClient((prevState) => ({ ...prevState, [selectedClientId]: f }))}
             />
           )}
+          {view === "cerebro" && <Cerebro />}
           {view === "equipo" && (
             <>
               <div className="mb-6">

@@ -462,40 +462,20 @@ export interface Client {
 }
 
 export const SEED_CLIENTS: Client[] = [
-  { id: "nortec", name: "Nortec Soluciones Industriales", tier: "Enterprise", industry: "Industrial B2B", owners: { growth: "—", sales: "—", success: "—" } },
-  { id: "vitalfit", name: "VitalFit Studios", tier: "Growth", industry: "Fitness / Retail", owners: { growth: "—", sales: "—", success: "—" } },
+  { id: "despa", name: "DESPA TRANSPORTES", tier: "Piloto", industry: "Transporte y logística", owners: { growth: "Thiago", sales: "Charly", success: "Tomi" } },
 ];
 
 export const SEED_TASK_STATUS: Record<string, Record<string, TaskStatus>> = {
-  nortec: { "get-1": "Hecho", "get-3": "En curso", "cv-2": "En curso", "kp-2": "Hecho" },
-  vitalfit: { "get-3": "Hecho", "get-5": "En curso", "cv-1": "Hecho" },
+  despa: {},
 };
 
 export const SEED_AGENT_STATUS: Record<string, Record<string, { status: AgentStatusValue; autonomy: number; resp: number }>> = {
-  nortec: {
-    "outbound-prospector": { status: "Activo", autonomy: 72, resp: 4 },
-    "inbound-qualifier": { status: "Activo", autonomy: 85, resp: 1 },
-    "proposal-generator": { status: "En construcción", autonomy: 0, resp: 0 },
-    "health-score": { status: "Activo", autonomy: 100, resp: 0 },
-  },
-  vitalfit: {
-    "content-writer": { status: "Activo", autonomy: 60, resp: 0 },
-    "inbound-qualifier": { status: "Activo", autonomy: 90, resp: 2 },
-  },
+  despa: {},
 };
 
+// Sin datos inventados: los KPIs de DESPA se cargan a medida que existan.
 export const SEED_KPIS: Record<string, KpiRow[]> = {
-  nortec: [
-    { period: "2026-05", leads: 64, meetings: 14, proposals: 8, closes: 3, revenue: 18400, healthScore: 78, nrr: 104, referrals: 1, churnRate: 2 },
-    { period: "2026-06", leads: 71, meetings: 17, proposals: 9, closes: 4, revenue: 22100, healthScore: 81, nrr: 108, referrals: 2, churnRate: 1.5 },
-    { period: "2026-07", leads: 80, meetings: 19, proposals: 11, closes: 5, revenue: 26700, healthScore: 83, nrr: 111, referrals: 2, churnRate: 1 },
-    { period: "2026-08", leads: 76, meetings: 21, proposals: 12, closes: 6, revenue: 31200, healthScore: 85, nrr: 116, referrals: 3, churnRate: 0.8 },
-  ],
-  vitalfit: [
-    { period: "2026-06", leads: 210, meetings: 38, proposals: 22, closes: 9, revenue: 9800, healthScore: 70, nrr: 96, referrals: 0, churnRate: 4 },
-    { period: "2026-07", leads: 245, meetings: 44, proposals: 26, closes: 12, revenue: 13500, healthScore: 74, nrr: 99, referrals: 1, churnRate: 3.2 },
-    { period: "2026-08", leads: 268, meetings: 49, proposals: 29, closes: 14, revenue: 16900, healthScore: 77, nrr: 101, referrals: 2, churnRate: 2.6 },
-  ],
+  despa: [],
 };
 
 export function stageOf(id: StageId) { return STAGES.find((s) => s.id === id)!; }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  NODO_W, NODO_H, nuevoNodo, nuevoWorkflow, conectar, curva, desdePlantilla, PLANTILLAS,
+  NODO_W, NODO_H, nuevoNodo, nuevoWorkflow, conectar, curva, desdePlantilla, desdeBrodita, PLANTILLAS,
   type Workflow, type NodoFlujo,
 } from "@/lib/workflows";
 import { AUTOMATIZACION_LABEL, type Automatizacion } from "@/lib/broda";
@@ -17,7 +17,7 @@ const TONO: Record<Automatizacion, string> = {
   agente: "var(--accent)",
 };
 
-export default function Workflows({ flows, onChange }: { flows: Workflow[]; onChange: (f: Workflow[]) => void }) {
+export default function Workflows({ flows, onChange, cerebro, cuenta }: { flows: Workflow[]; onChange: (f: Workflow[]) => void; cerebro: string; cuenta: string }) {
   const [activoId, setActivoId] = useState<string | null>(flows[0]?.id ?? null);
   const [nuevoAbierto, setNuevoAbierto] = useState(false);
   const activo = flows.find((w) => w.id === activoId) ?? flows[0] ?? null;
@@ -68,7 +68,7 @@ export default function Workflows({ flows, onChange }: { flows: Workflow[]; onCh
         </div>
       )}
 
-      {nuevoAbierto && <ModalNuevo onClose={() => setNuevoAbierto(false)} onCreate={crear} />}
+      {nuevoAbierto && <ModalNuevo onClose={() => setNuevoAbierto(false)} onCreate={crear} cerebro={cerebro} cuenta={cuenta} />}
     </div>
   );
 }
@@ -325,12 +325,38 @@ function Campo({ t, children }: { t: string; children: React.ReactNode }) {
 
 /* ---------------- NUEVO FLUJO ---------------- */
 
-function ModalNuevo({ onClose, onCreate }: { onClose: () => void; onCreate: (w: Workflow) => void }) {
+function ModalNuevo({ onClose, onCreate, cerebro, cuenta }: {
+  onClose: () => void; onCreate: (w: Workflow) => void; cerebro: string; cuenta: string;
+}) {
   const [nombre, setNombre] = useState("");
   const [plantilla, setPlantilla] = useState("");
+  const [instruccion, setInstruccion] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const field = "border border-border-strong rounded-[var(--r-md)] px-3 py-2 bg-bg text-ink text-[13px] outline-none focus:border-accent w-full";
+  const grupos = [...new Set(PLANTILLAS.map((p) => p.grupo))];
 
-  const crear = () => {
+  const crear = async () => {
+    if (plantilla === "brodita") {
+      const pedido = instruccion.trim();
+      if (!pedido || busy) return;
+      setBusy(true); setError(null);
+      try {
+        const res = await fetch("/api/brodita/constructor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ instruccion: pedido, cerebro, cuenta }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Brodita no pudo armarlo");
+        onCreate(desdeBrodita(nombre.trim() || json.flujo.nombre, json.flujo.pasos));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error armando el flujo");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const n = nombre.trim() || (plantilla ? PLANTILLAS.find((p) => p.id === plantilla)!.nombre : "Flujo nuevo");
     onCreate(plantilla ? desdePlantilla(plantilla, n) : nuevoWorkflow(n));
   };
@@ -343,16 +369,38 @@ function ModalNuevo({ onClose, onCreate }: { onClose: () => void; onCreate: (w: 
           Nombre
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Onboarding" className={field} autoFocus />
         </label>
-        <label className="flex flex-col gap-1.5 text-[11px] text-ink-faint mb-5">
+        <label className="flex flex-col gap-1.5 text-[11px] text-ink-faint mb-4">
           Arrancar desde
           <select value={plantilla} onChange={(e) => setPlantilla(e.target.value)} className={field}>
             <option value="">Tablero vacío</option>
-            {PLANTILLAS.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            <option value="brodita">Que lo arme Brodita</option>
+            {grupos.map((g) => (
+              <optgroup key={g} label={g}>
+                {PLANTILLAS.filter((p) => p.grupo === g).map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </optgroup>
+            ))}
           </select>
         </label>
+
+        {plantilla === "brodita" && (
+          <label className="flex flex-col gap-1.5 text-[11px] text-ink-faint mb-4">
+            Qué flujo necesitás
+            <textarea
+              value={instruccion} onChange={(e) => setInstruccion(e.target.value)} rows={4}
+              placeholder="Ej: el flujo para recuperar clientes que dejaron de comprar hace 6 meses, con mails y llamada"
+              className={`${field} resize-y`}
+            />
+            <span className="text-[10.5px] text-ink-faint">Lo arma con el cerebro de Broda: oferta, ICP, proceso y objeciones.</span>
+          </label>
+        )}
+
+        {error && <div className="text-[11.5px] text-critical bg-critical/10 border border-critical/30 rounded-[var(--r-md)] p-2.5 mb-3">{error}</div>}
+
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="text-ink-soft hover:text-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5">Cancelar</button>
-          <button onClick={crear} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors">Crear</button>
+          <button onClick={crear} disabled={busy} className="bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors disabled:opacity-50">
+            {busy ? "Armando…" : "Crear"}
+          </button>
         </div>
       </div>
     </div>

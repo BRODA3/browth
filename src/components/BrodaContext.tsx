@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { setPath, type PathKey } from "@/lib/setPath";
+import { SEED_CEREBRO, type DocCerebro } from "@/lib/cerebro";
 import {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
   EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
@@ -15,6 +16,7 @@ import {
 const DEFAULT_DATA = {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
   EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
+  CEREBRO: SEED_CEREBRO as DocCerebro[],
 };
 
 export type BrodaData = typeof DEFAULT_DATA;
@@ -40,6 +42,10 @@ function normalize(parsed: Partial<BrodaData>): BrodaData {
   const personas = new Set(data.EQUIPO_BRODA.map((m) => m.persona));
   const faltantes = DEFAULT_DATA.EQUIPO_BRODA.filter((m) => !personas.has(m.persona));
   if (faltantes.length) data.EQUIPO_BRODA = [...data.EQUIPO_BRODA, ...faltantes];
+
+  // Documentos base del cerebro que todavia no estaban guardados.
+  const titulos = new Set((data.CEREBRO ?? []).map((x) => x.titulo));
+  data.CEREBRO = [...(data.CEREBRO ?? []), ...SEED_CEREBRO.filter((s) => !titulos.has(s.titulo))];
 
   // Capas nuevas del flujo que todavia no estaban en lo guardado.
   data.FLUJOS = { ...DEFAULT_DATA.FLUJOS, ...(parsed.FLUJOS ?? {}) };
