@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { limitar } from "@/lib/limite";
 
 // Lanza la búsqueda de empresas en Google Maps (actor de Apify). La corrida tarda
 // minutos, así que no se espera acá: se devuelve el id y el panel consulta
@@ -31,6 +32,9 @@ async function creditoDisponible(token: string): Promise<number | null> {
 }
 
 export async function POST(req: NextRequest) {
+  const tope = limitar(req, "buscar", 6, 60 * 60_000);
+  if (tope) return tope;
+
   const token = process.env.APIFY_TOKEN;
   if (!token) {
     return NextResponse.json({ error: "Falta APIFY_TOKEN en el servidor. Cargala en .env.local (local) o en Vercel → Settings → Environment Variables." }, { status: 500 });

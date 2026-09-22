@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { limitar } from "@/lib/limite";
 
 // Brodita: el cerebro de ventas y growth de Broda. No solo responde — puede
 // crear flujos, cargar oportunidades en el CRM, sumar piezas al plan de
@@ -181,6 +182,9 @@ const TOOLS: Anthropic.Tool[] = [
 ];
 
 export async function POST(req: NextRequest) {
+  const tope = limitar(req, "brodita", 40, 5 * 60_000);
+  if (tope) return tope;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

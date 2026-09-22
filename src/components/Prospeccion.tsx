@@ -1,5 +1,7 @@
 "use client";
 
+import { pedir } from "@/lib/api";
+
 import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, StatCard, Pill } from "./ui";
 import Markdown from "./Markdown";
@@ -103,7 +105,7 @@ export default function Prospeccion({
       `¿Lanzo la búsqueda?`
     )) return;
     try {
-      const res = await fetch("/api/prospeccion/buscar", {
+      const res = await pedir("/api/prospeccion/buscar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rubros: perfil.rubros, zonas: perfil.zonas, porBusqueda: perfil.porBusqueda }),
@@ -133,7 +135,7 @@ export default function Prospeccion({
   async function recuperar(runId: string) {
     setError(null);
     try {
-      const res = await fetch(`/api/prospeccion/estado?run=${encodeURIComponent(runId.trim())}`);
+      const res = await pedir(`/api/prospeccion/estado?run=${encodeURIComponent(runId.trim())}`);
       const json = await res.json();
       if (!res.ok || json.estado === "fallo") throw new Error(json.error ?? "No pude recuperar esa búsqueda.");
       if (json.estado === "corriendo") {
@@ -154,7 +156,7 @@ export default function Prospeccion({
     let vivo = true;
     const consultar = async () => {
       try {
-        const res = await fetch(`/api/prospeccion/estado?run=${busqueda.runId}`);
+        const res = await pedir(`/api/prospeccion/estado?run=${busqueda.runId}`);
         const json = await res.json();
         if (!vivo) return;
         if (!res.ok || json.estado === "fallo") {
@@ -185,7 +187,7 @@ export default function Prospeccion({
   async function investigarUno(lead: Lead) {
     onLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, estado: "investigando", error: undefined } : l)));
     try {
-      const res = await fetch("/api/prospeccion/investigar", {
+      const res = await pedir("/api/prospeccion/investigar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lead, perfil: perfilATexto(perfil), cuenta }),
@@ -230,7 +232,7 @@ export default function Prospeccion({
     }
     setAnalizando(true);
     try {
-      const res = await fetch("/api/competencia", {
+      const res = await pedir("/api/competencia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cuenta, perfil: perfilATexto(perfil), cerebro }),
@@ -550,6 +552,38 @@ function FilaLead({ l, elegido, onToggle, onReintentar, onDescartar }: {
 
 function PerfilForm({ perfil, onPerfil, onListo }: { perfil: PerfilProspeccion; onPerfil: (p: PerfilProspeccion) => void; onListo: () => void }) {
   const [copiado, setCopiado] = useState(false);
+  const [pegado, setPegado] = useState("");
+  const [leyendo, setLeyendo] = useState(false);
+  const [faltan, setFaltan] = useState<string[]>([]);
+  const [errorTexto, setErrorTexto] = useState<string | null>(null);
+
+  /** Convierte lo pegado (respuestas del cliente, un mail, notas) en el perfil. */
+  async function leerTexto() {
+    setErrorTexto(null);
+    setLeyendo(true);
+    try {
+      const res = await pedir("/api/prospeccion/perfil", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: pegado }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      const p = json.perfil as Partial<PerfilProspeccion>;
+      // Lo que el texto no dice no pisa lo que ya estaba cargado.
+      onPerfil({
+        ...perfil,
+        ...Object.fromEntries(Object.entries(p).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : Boolean(v)))),
+      } as PerfilProspeccion);
+      setFaltan(json.faltan ?? []);
+      setPegado("");
+    } catch (e) {
+      setErrorTexto(e instanceof Error ? e.message : "No pude leer ese texto.");
+    } finally {
+      setLeyendo(false);
+    }
+  }
+
   const set = <K extends keyof PerfilProspeccion>(k: K, v: PerfilProspeccion[K]) => onPerfil({ ...perfil, [k]: v });
   const toggleZona = (z: string) => set("zonas", perfil.zonas.includes(z) ? perfil.zonas.filter((x) => x !== z) : [...perfil.zonas, z]);
   const listo = perfil.rubros.length > 0 && perfil.zonas.length > 0 && perfil.cargos.length > 0;
@@ -564,8 +598,39 @@ function PerfilForm({ perfil, onPerfil, onListo }: { perfil: PerfilProspeccion; 
 
   return (
     <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
+      <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader title="Perfil de búsqueda" sub="Lo que el agente necesita para buscar y puntuar. Las ★ son imprescindibles." />
+        <CardHeader
+          title="Pegá lo que tengas y listo"
+          sub="Las respuestas del cliente, un mail, las notas de la reunión o lo que devolvió el proyecto de Claude. El agente lo lee y completa los campos de abajo; lo que no diga, queda vacío."
+        />
+        <textarea
+          value={pegado}
+          onChange={(e) => setPegado(e.target.value)}
+          rows={5}
+          placeholder={"Ej.: Vendemos limpieza de oficinas, abono desde $400.000. Les vendemos a estudios contables y jurídicos de 10 a 50 empleados en Palermo y Microcentro. Decide el socio o el gerente de administración. No nos sirven consultorios médicos. Competencia: Limpiolux, CleanOffice BA."}
+          className={`${inputCls} leading-relaxed`}
+        />
+        <div className="flex items-center justify-between gap-3 flex-wrap mt-3">
+          <span className="text-[11.5px] text-ink-faint">
+            {pegado.trim().length > 0 ? `${pegado.trim().length} caracteres` : "También sirve pegar el chat con el cliente."}
+          </span>
+          <button onClick={leerTexto} disabled={leyendo || pegado.trim().length < 40} className={btnPrimario}>
+            {leyendo ? "Leyendo…" : "✦ Leer y completar el perfil"}
+          </button>
+        </div>
+        {errorTexto && <div className="text-[12px] text-[#fca5a5] mt-2">{errorTexto}</div>}
+        {faltan.length > 0 && (
+          <div className="mt-3 border border-accent/40 bg-accent/[0.06] rounded-[var(--r-md)] p-3">
+            <div className="font-display font-extrabold uppercase text-[10px] tracking-wide text-accent mb-1.5">Falta preguntarle al cliente</div>
+            <ul className="list-disc pl-4 text-[12px] text-ink-soft flex flex-col gap-1">
+              {faltan.map((f) => <li key={f}>{f}</li>)}
+            </ul>
+          </div>
+        )}
+      </Card>
+
+      <Card>
         <div className="grid md:grid-cols-2 gap-4">
           {campo("Qué vende la cuenta", "Una o dos líneas, con precio aproximado si lo hay.",
             <textarea rows={2} value={perfil.oferta} onChange={(e) => set("oferta", e.target.value)} className={inputCls} />)}
@@ -611,6 +676,7 @@ function PerfilForm({ perfil, onPerfil, onListo }: { perfil: PerfilProspeccion; 
           <button onClick={onListo} disabled={!listo} className={btnPrimario}>Listo, ir a buscar →</button>
         </div>
       </Card>
+      </div>
 
       <Card>
         <CardHeader title="Cuestionario para el cliente" sub="Mandáselo por WhatsApp o mail. Con sus respuestas completás este perfil." />

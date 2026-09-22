@@ -22,6 +22,7 @@ import { contextoDeDocs, type DocCerebro } from "@/lib/cerebro";
 import Metricas from "./Metricas";
 import Prospeccion, { type BusquedaEnCurso, type PedidoProspeccion } from "./Prospeccion";
 import Prompts from "./Prompts";
+import { accesoAbierto } from "@/lib/api";
 import { buscarPrompt, completar, nuevoPrompt, type CategoriaPrompt, type Prompt } from "@/lib/prompts";
 import { PERFIL_VACIO, perfilATexto, type AnalisisCompetencia, type Lead, type PerfilProspeccion } from "@/lib/prospeccion";
 import AgentesIA from "./AgentesIA";
@@ -370,6 +371,7 @@ function AppInner() {
 
   return (
     <div className="min-h-screen">
+      <AvisoAcceso />
       <TopBar mode={mode} view={view} onSetMode={(m) => { setMode(m); setView(m === "broda" ? "planmes" : "pipeline"); }} />
       <div className="flex">
         <SideNav
@@ -510,6 +512,30 @@ function AppInner() {
         </main>
       </div>
       <BroditaChat mode={mode} client={client} onAccion={ejecutarAccion} docs={docsActivos} contextoCuenta={contextoCuenta} />
+    </div>
+  );
+}
+
+/** Si el servidor no tiene código de acceso, cualquiera con el link gasta nuestras claves. */
+function AvisoAcceso() {
+  const [abierto, setAbierto] = useState(false);
+  const [cerrado, setCerrado] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    accesoAbierto().then((v) => { if (vivo) setAbierto(v); });
+    return () => { vivo = false; };
+  }, []);
+
+  if (!abierto || cerrado || typeof window === "undefined" || window.location.hostname === "localhost") return null;
+
+  return (
+    <div className="bg-[#f87171]/15 border-b border-[#f87171]/40 text-[#fca5a5] text-[12.5px] px-5 py-2.5 flex items-center justify-between gap-3">
+      <span>
+        <b>Esta app está abierta al público.</b> Cualquiera con el link puede usar Brodita y los agentes, gastando tus créditos de Claude y de Apify.
+        Cargá <code className="bg-surface-3 px-1.5 py-0.5 rounded text-ink-soft">BROWTH_ACCESS_CODE</code> en Vercel → Settings → Environment Variables.
+      </span>
+      <button onClick={() => setCerrado(true)} className="shrink-0 opacity-70 hover:opacity-100">✕</button>
     </div>
   );
 }

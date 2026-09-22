@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { limitar } from "@/lib/limite";
 import { nuevoLead, separarEmails, whatsappDe, whatsappDeLink, type Lead } from "@/lib/prospeccion";
 
 // Estado de una búsqueda en Google Maps. Cuando termina, devuelve los lugares
@@ -42,6 +43,9 @@ function aLead(p: Lugar): Lead {
 }
 
 export async function GET(req: NextRequest) {
+  const tope = limitar(req, "estado", 200, 5 * 60_000);
+  if (tope) return tope;
+
   const token = process.env.APIFY_TOKEN;
   if (!token) return NextResponse.json({ error: "Falta APIFY_TOKEN en el servidor." }, { status: 500 });
 

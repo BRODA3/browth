@@ -1,5 +1,7 @@
 "use client";
 
+import { pedir } from "@/lib/api";
+
 import { useState } from "react";
 import { useBroda } from "./BrodaContext";
 import type { Mode } from "./Nav";
@@ -104,7 +106,7 @@ export default function BroditaChat({
     const relevantes = buscarRelevantes(docs, text, 4);
     setFuentes(relevantes);
     try {
-      const res = await fetch("/api/brodita", {
+      const res = await pedir("/api/brodita", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

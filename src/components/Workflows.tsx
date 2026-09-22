@@ -1,5 +1,7 @@
 "use client";
 
+import { pedir } from "@/lib/api";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   NODO_W, NODO_H, nuevoNodo, nuevoWorkflow, conectar, curva, desdePlantilla, desdeBrodita, PLANTILLAS,
@@ -357,7 +359,7 @@ function ModalNuevo({ onClose, onCreate, cerebro, cuenta }: {
       if (!pedido || busy) return;
       setBusy(true); setError(null);
       try {
-        const res = await fetch("/api/brodita/constructor", {
+        const res = await pedir("/api/brodita/constructor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ instruccion: pedido, cerebro, cuenta }),

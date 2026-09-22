@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { limitar } from "@/lib/limite";
 
 // Brodita construyendo, no conversando: recibe una instrucción y devuelve un
 // flujo comercial listo para caer en el tablero de la cuenta. El cerebro viaja
@@ -23,6 +24,9 @@ Respondé SOLO con este JSON, sin texto alrededor ni bloque de código:
 {"nombre":"nombre corto del flujo","pasos":[{"etiqueta":"palabra o dos","titulo":"qué pasa en este paso","responsable":"rol","herramienta":"con qué","agente":"","tiempo":"48 hs","automatizacion":"manual","detalle":"el detalle accionable"}]}`;
 
 export async function POST(req: NextRequest) {
+  const tope = limitar(req, "constructor", 20, 5 * 60_000);
+  if (tope) return tope;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
