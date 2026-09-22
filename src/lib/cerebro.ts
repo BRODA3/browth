@@ -2,7 +2,7 @@
 // se arma con los documentos relevantes, no con lo que el modelo supone.
 // Se puede escribir acá adentro o importar notas de Obsidian (.md).
 
-export type TipoDoc = "marca" | "oferta" | "icp" | "proceso" | "objeciones" | "caso" | "nota";
+export type TipoDoc = "marca" | "oferta" | "icp" | "proceso" | "objeciones" | "caso" | "competencia" | "nota";
 
 export const TIPOS_DOC: { id: TipoDoc; label: string }[] = [
   { id: "marca", label: "Marca y tono" },
@@ -11,6 +11,7 @@ export const TIPOS_DOC: { id: TipoDoc; label: string }[] = [
   { id: "proceso", label: "Proceso comercial" },
   { id: "objeciones", label: "Objeciones" },
   { id: "caso", label: "Casos y resultados" },
+  { id: "competencia", label: "Competencia" },
   { id: "nota", label: "Nota suelta" },
 ];
 

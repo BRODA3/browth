@@ -1,5 +1,7 @@
 "use client";
 
+import { pedir } from "@/lib/api";
+
 import { useState } from "react";
 import { AGENT_STATUS_OPTIONS, type AgentStatusValue } from "@/lib/data";
 import { DEPARTAMENTOS, deptoDe, type AgenteConfig, type DeptoId } from "@/lib/agentes";
@@ -37,7 +39,7 @@ export default function AgentePanel({
     if (!mensaje.trim() || probando) return;
     setProbando(true); setError(null); setRespuesta(null);
     try {
-      const res = await fetch("/api/agents/probar", {
+      const res = await pedir("/api/agents/probar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: agente.prompt, limites: agente.limites, cerebro, cuenta, mensaje }),

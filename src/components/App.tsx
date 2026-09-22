@@ -20,6 +20,11 @@ import { nuevoDoc, type TipoDoc } from "@/lib/cerebro";
 import { CANALES, type PiezaPlan } from "@/lib/broda";
 import { contextoDeDocs, type DocCerebro } from "@/lib/cerebro";
 import Metricas from "./Metricas";
+import Prospeccion, { type BusquedaEnCurso, type PedidoProspeccion } from "./Prospeccion";
+import Prompts from "./Prompts";
+import { accesoAbierto } from "@/lib/api";
+import { buscarPrompt, completar, nuevoPrompt, type CategoriaPrompt, type Prompt } from "@/lib/prompts";
+import { PERFIL_VACIO, perfilATexto, type AnalisisCompetencia, type Lead, type PerfilProspeccion } from "@/lib/prospeccion";
 import AgentesIA from "./AgentesIA";
 import PlanMes from "./PlanMes";
 import { normalizarAgentes, type AgenteConfig } from "@/lib/agentes";
@@ -37,7 +42,7 @@ import {
   type Client, type KpiRow, type StageId, type TaskStatus, type AgentStatusValue,
 } from "@/lib/data";
 
-const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "workflows", "brains", "agentes", "metricas"]);
+const CLIENT_SCOPED = new Set<View>(["pipeline", "crm", "prospeccion", "workflows", "brains", "agentes", "metricas"]);
 
 /** Vistas de tablero: ocupan todo el ancho y todo el alto de la pantalla. */
 const PANTALLA_COMPLETA = new Set<View>(["workflows", "agentes"]);
@@ -78,6 +83,10 @@ function AppInner() {
     workflowsByClient?: Record<string, Workflow[]>;
     brainsByClient?: Record<string, DocCerebro[]>;
     agentesByClient?: Record<string, AgenteConfig[]>;
+    perfilByClient?: Record<string, PerfilProspeccion>;
+    leadsByClient?: Record<string, Lead[]>;
+    busquedaByClient?: Record<string, BusquedaEnCurso | null>;
+    competenciaByClient?: Record<string, AnalisisCompetencia[]>;
   }>({}), []);
 
   const [clients, setClients] = useState<Client[]>(persisted.clients?.length ? persisted.clients : SEED_CLIENTS);
@@ -100,14 +109,22 @@ function AppInner() {
   const [workflowsByClient, setWorkflowsByClient] = useState<Record<string, Workflow[]>>(() => persisted.workflowsByClient ?? {});
   const [brainsByClient, setBrainsByClient] = useState<Record<string, DocCerebro[]>>(() => persisted.brainsByClient ?? {});
   const [agentesByClient, setAgentesByClient] = useState<Record<string, AgenteConfig[]>>(() => persisted.agentesByClient ?? {});
+  const [perfilByClient, setPerfilByClient] = useState<Record<string, PerfilProspeccion>>(() => persisted.perfilByClient ?? {});
+  const [leadsByClient, setLeadsByClient] = useState<Record<string, Lead[]>>(() => persisted.leadsByClient ?? {});
+  const [busquedaByClient, setBusquedaByClient] = useState<Record<string, BusquedaEnCurso | null>>(() => persisted.busquedaByClient ?? {});
+  const [competenciaByClient, setCompetenciaByClient] = useState<Record<string, AnalisisCompetencia[]>>(() => persisted.competenciaByClient ?? {});
+  const [pedidoProspeccion, setPedidoProspeccion] = useState<PedidoProspeccion | null>(null);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, taskStatusByClient, kpisByClient, crmByClient, workflowsByClient, brainsByClient, agentesByClient }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        clients, taskStatusByClient, kpisByClient, crmByClient, workflowsByClient, brainsByClient, agentesByClient,
+        perfilByClient, leadsByClient, busquedaByClient, competenciaByClient,
+      }));
     } catch {
       // localStorage no disponible (modo privado, cuota llena) — la app sigue funcionando en memoria.
     }
-  }, [clients, taskStatusByClient, kpisByClient, crmByClient, workflowsByClient, brainsByClient, agentesByClient]);
+  }, [clients, taskStatusByClient, kpisByClient, crmByClient, workflowsByClient, brainsByClient, agentesByClient, perfilByClient, leadsByClient, busquedaByClient, competenciaByClient]);
 
   const client = clients.find((c) => c.id === selectedClientId)!;
   const taskStatus = taskStatusByClient[selectedClientId] || {};
@@ -155,6 +172,50 @@ function AppInner() {
   const brainCliente = brainsByClient[selectedClientId] ?? [];
   const docsActivos = mode === "clientes" ? brainCliente : (brodaData.CEREBRO ?? []);
   const cerebroActivo = contextoDeDocs(docsActivos.filter((d) => d.activo), 1200);
+
+  const perfil = perfilByClient[selectedClientId] ?? PERFIL_VACIO;
+  const leadsCliente = leadsByClient[selectedClientId] ?? [];
+  const setPerfil = (p: PerfilProspeccion) => setPerfilByClient((prevState) => ({ ...prevState, [selectedClientId]: p }));
+
+  /** Los leads elegidos entran al CRM como oportunidades nuevas, con todo lo investigado en la nota. */
+  function pasarLeadsAlCrm(lote: Lead[], clienteId = selectedClientId) {
+    const ops = lote.map((l) => nuevaOportunidad({
+      nombre: l.decisor || l.empresa,
+      empresa: l.empresa,
+      telefono: l.whatsapp || l.telefono,
+      email: l.email || l.emailGenerico,
+      fuente: "outbound",
+      etapa: "nuevo",
+      nota: [
+        l.cargo && `Cargo: ${l.cargo}${l.confianza ? ` (confianza ${l.confianza})` : ""}`,
+        l.score != null && `Score ICP: ${l.score}/10 — ${l.motivo}`,
+        l.gancho && `Gancho: ${l.gancho}`,
+        l.web && `Web: ${l.web}`,
+        l.linkedinDecisor && `LinkedIn: ${l.linkedinDecisor}`,
+        l.direccion && `Dirección: ${l.direccion}`,
+      ].filter(Boolean).join("\n"),
+    }));
+    setCrmByClient((prevState) => ({ ...prevState, [clienteId]: [...(prevState[clienteId] ?? []), ...ops] }));
+  }
+
+  function guardarInformeEnBrain(a: AnalisisCompetencia) {
+    const titulo = `Competencia — ${new Date(a.fecha).toLocaleDateString("es-AR")}`;
+    const doc = nuevoDoc({ titulo, tipo: "competencia", contenido: a.informe });
+    setBrainsByClient((prevState) => ({
+      ...prevState,
+      [selectedClientId]: [...(prevState[selectedClientId] ?? []).filter((d) => d.titulo !== titulo), doc],
+    }));
+  }
+
+  const titulosPrompts = (brodaData.PROMPTS ?? []).map((p) => `"${p.titulo}"`).join(", ");
+
+  /** Lo que Brodita tiene que saber de la operación de la cuenta, además del brain. */
+  const contextoCuenta = [`Prompts en el banco: ${titulosPrompts || "ninguno"}.`, mode === "clientes" ? [
+    perfil.rubros.length ? `Perfil de prospección:\n${perfilATexto(perfil)}` : "Perfil de prospección: sin cargar.",
+    `Prospección: ${leadsCliente.length} leads (${leadsCliente.filter((l) => l.score != null).length} investigados, ${leadsCliente.filter((l) => (l.score ?? 0) >= 7).length} con score 7+, ${leadsCliente.filter((l) => l.estado === "en_crm").length} ya en el CRM).`,
+    `CRM: ${(crmByClient[selectedClientId] ?? []).length} oportunidades.`,
+    (competenciaByClient[selectedClientId] ?? []).length ? `Hay un análisis de competencia del ${new Date(competenciaByClient[selectedClientId][0].fecha).toLocaleDateString("es-AR")}.` : "Sin análisis de competencia todavía.",
+  ].join("\n") : ""].filter(Boolean).join("\n");
 
 
   /** Lo que Brodita deja hecho cuando el equipo toca "Aplicar". */
@@ -208,8 +269,98 @@ function AppInner() {
 
     if (a.tool === "guardar_en_cerebro") {
       const doc = nuevoDoc({ titulo: str("titulo", "Nota de Brodita"), contenido: str("contenido"), tipo: (str("tipo", "nota") as TipoDoc) });
+      // En Clientes lo aprendido es de la cuenta; en Broda, de la marca propia.
+      if (mode === "clientes") {
+        setBrainsByClient((prevState) => ({ ...prevState, [selectedClientId]: [...(prevState[selectedClientId] ?? []), doc] }));
+        return `Guardé "${doc.titulo}" en el brain de ${client.name}. Ya lo usa en las próximas respuestas.`;
+      }
       updateBroda(["CEREBRO"], [...(brodaData.CEREBRO ?? []), doc]);
-      return `Guardé "${doc.titulo}" en el cerebro. Ya lo usa en las próximas respuestas.`;
+      return `Guardé "${doc.titulo}" en el brain de BRODA. Ya lo usa en las próximas respuestas.`;
+    }
+
+    if (a.tool === "usar_prompt") {
+      const p = buscarPrompt(brodaData.PROMPTS ?? [], str("nombre"));
+      if (!p) return `No encontré un prompt que se llame "${str("nombre")}" en el banco.`;
+      setMode("broda");
+      setView("prompts");
+      return `${p.titulo} — copialo desde el banco de prompts:\n\n${completar(p.contenido, mode === "clientes" ? client.name : undefined)}`;
+    }
+
+    if (a.tool === "guardar_prompt") {
+      const prompts: Prompt[] = brodaData.PROMPTS ?? [];
+      const titulo = str("titulo", "Prompt de Brodita");
+      const nuevo = nuevoPrompt({
+        titulo,
+        categoria: (str("categoria", "interno") as CategoriaPrompt),
+        cuando: str("cuando"),
+        contenido: str("contenido"),
+      });
+      const existente = prompts.find((x) => x.titulo.toLowerCase() === titulo.toLowerCase());
+      updateBroda(["PROMPTS"], existente
+        ? prompts.map((x) => (x.id === existente.id ? { ...existente, ...nuevo, id: existente.id } : x))
+        : [...prompts, nuevo]);
+      setMode("broda");
+      setView("prompts");
+      return `${existente ? "Actualicé" : "Guardé"} "${titulo}" en el banco de prompts.`;
+    }
+
+    const lista = (k: string) => (Array.isArray(i[k]) ? (i[k] as unknown[]).filter((x): x is string => typeof x === "string" && x.trim() !== "") : []);
+
+    if (a.tool === "cargar_perfil_prospeccion") {
+      const p: PerfilProspeccion = {
+        ...perfil,
+        ...(str("oferta") && { oferta: str("oferta") }),
+        ...(lista("rubros").length && { rubros: lista("rubros") }),
+        ...(lista("zonas").length && { zonas: lista("zonas") }),
+        ...(lista("cargos").length && { cargos: lista("cargos") }),
+        ...(str("tamano") && { tamano: str("tamano") }),
+        ...(str("senales") && { senales: str("senales") }),
+        ...(str("excluir") && { excluir: str("excluir") }),
+        ...(str("no_contactar") && { noContactar: str("no_contactar") }),
+        ...(str("competidores") && { competidores: str("competidores") }),
+        ...(str("alternativas") && { alternativas: str("alternativas") }),
+      };
+      setPerfil(p);
+      setMode("clientes");
+      setView("prospeccion");
+      setPedidoProspeccion({ tab: "perfil", arrancar: false });
+      return `Cargué el perfil de prospección de ${client.name}: ${p.rubros.length} rubros en ${p.zonas.length} zonas. Revisalo y buscá.`;
+    }
+
+    if (a.tool === "buscar_prospectos") {
+      const p: PerfilProspeccion = {
+        ...perfil,
+        ...(lista("rubros").length && { rubros: lista("rubros") }),
+        ...(lista("zonas").length && { zonas: lista("zonas") }),
+        ...(typeof i.por_busqueda === "number" && { porBusqueda: i.por_busqueda }),
+      };
+      setPerfil(p);
+      setMode("clientes");
+      setView("prospeccion");
+      setPedidoProspeccion({ tab: "leads", arrancar: true });
+      return `Lancé la búsqueda para ${client.name}: ${p.rubros.join(", ")} en ${p.zonas.join(", ")}. Cuando termine, tocá "Investigar".`;
+    }
+
+    if (a.tool === "analizar_competencia") {
+      if (str("competidores")) setPerfil({ ...perfil, competidores: str("competidores") });
+      setMode("clientes");
+      setView("prospeccion");
+      setPedidoProspeccion({ tab: "competencia", arrancar: true });
+      return `Arranqué el análisis de competencia de ${client.name}. Tarda unos minutos.`;
+    }
+
+    if (a.tool === "pasar_leads_al_crm") {
+      const minimo = typeof i.score_minimo === "number" ? i.score_minimo : 7;
+      const lote = leadsCliente.filter((l) => (l.score ?? 0) >= minimo && l.estado !== "en_crm" && l.estado !== "descartado");
+      if (!lote.length) return `No hay leads con score ${minimo}+ para pasar al CRM de ${client.name}.`;
+      pasarLeadsAlCrm(lote);
+      setLeadsByClient((prevState) => ({
+        ...prevState,
+        [selectedClientId]: (prevState[selectedClientId] ?? []).map((l) => (lote.some((x) => x.id === l.id) ? { ...l, estado: "en_crm" } : l)),
+      }));
+      setMode("clientes");
+      setView("crm");
+      return `Pasé ${lote.length} leads con score ${minimo}+ al CRM de ${client.name}, en la etapa Nuevo.`;
     }
 
     return "No supe qué hacer con eso.";
@@ -220,6 +371,7 @@ function AppInner() {
 
   return (
     <div className="min-h-screen">
+      <AvisoAcceso />
       <TopBar mode={mode} view={view} onSetMode={(m) => { setMode(m); setView(m === "broda" ? "planmes" : "pipeline"); }} />
       <div className="flex">
         <SideNav
@@ -275,6 +427,34 @@ function AppInner() {
               onChange={(ops) => setCrmByClient((prevState) => ({ ...prevState, [selectedClientId]: ops }))}
             />
           )}
+          {view === "prospeccion" && (
+            <Prospeccion
+              key={selectedClientId}
+              cuenta={client.name}
+              perfil={perfil}
+              onPerfil={setPerfil}
+              leads={leadsCliente}
+              onLeads={(fn) => {
+                const id = selectedClientId;
+                setLeadsByClient((prevState) => ({ ...prevState, [id]: fn(prevState[id] ?? []) }));
+              }}
+              busqueda={busquedaByClient[selectedClientId] ?? null}
+              onBusqueda={(b) => {
+                const id = selectedClientId;
+                setBusquedaByClient((prevState) => ({ ...prevState, [id]: b }));
+              }}
+              analisis={competenciaByClient[selectedClientId] ?? []}
+              onAnalisis={(fn) => {
+                const id = selectedClientId;
+                setCompetenciaByClient((prevState) => ({ ...prevState, [id]: fn(prevState[id] ?? []) }));
+              }}
+              cerebro={cerebroActivo}
+              onPasarCrm={(lote) => pasarLeadsAlCrm(lote)}
+              onGuardarInforme={guardarInformeEnBrain}
+              pedido={pedidoProspeccion}
+              onPedidoAtendido={() => setPedidoProspeccion(null)}
+            />
+          )}
           {view === "workflows" && (
             <Workflows
               flows={workflowsByClient[selectedClientId] ?? []}
@@ -300,6 +480,7 @@ function AppInner() {
               />
             )
           )}
+          {view === "prompts" && <Prompts cuenta={mode === "clientes" ? client.name : undefined} />}
           {view === "equipo" && (
             <>
               <div className="mb-6">
@@ -330,7 +511,31 @@ function AppInner() {
           )}
         </main>
       </div>
-      <BroditaChat mode={mode} client={client} onAccion={ejecutarAccion} docs={docsActivos} />
+      <BroditaChat mode={mode} client={client} onAccion={ejecutarAccion} docs={docsActivos} contextoCuenta={contextoCuenta} />
+    </div>
+  );
+}
+
+/** Si el servidor no tiene código de acceso, cualquiera con el link gasta nuestras claves. */
+function AvisoAcceso() {
+  const [abierto, setAbierto] = useState(false);
+  const [cerrado, setCerrado] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    accesoAbierto().then((v) => { if (vivo) setAbierto(v); });
+    return () => { vivo = false; };
+  }, []);
+
+  if (!abierto || cerrado || typeof window === "undefined" || window.location.hostname === "localhost") return null;
+
+  return (
+    <div className="bg-[#f87171]/15 border-b border-[#f87171]/40 text-[#fca5a5] text-[12.5px] px-5 py-2.5 flex items-center justify-between gap-3">
+      <span>
+        <b>Esta app está abierta al público.</b> Cualquiera con el link puede usar Brodita y los agentes, gastando tus créditos de Claude y de Apify.
+        Cargá <code className="bg-surface-3 px-1.5 py-0.5 rounded text-ink-soft">BROWTH_ACCESS_CODE</code> en Vercel → Settings → Environment Variables.
+      </span>
+      <button onClick={() => setCerrado(true)} className="shrink-0 opacity-70 hover:opacity-100">✕</button>
     </div>
   );
 }

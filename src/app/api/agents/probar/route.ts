@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { limitar } from "@/lib/limite";
 
 // Probar un agente con su propio prompt, el cerebro de la cuenta y un mensaje
 // de ejemplo. Es el paso previo a ponerlo en producción: se ve qué contesta
@@ -8,6 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const tope = limitar(req, "probar-agente", 30, 5 * 60_000);
+  if (tope) return tope;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

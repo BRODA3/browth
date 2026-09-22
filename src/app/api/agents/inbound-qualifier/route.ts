@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { limitar } from "@/lib/limite";
 import { AGENTS } from "@/lib/data";
 
 // Primer agente "vivo" de Browth: recibe un mensaje entrante de WhatsApp/IG
@@ -17,6 +18,9 @@ interface QualifyResult {
 }
 
 export async function POST(req: NextRequest) {
+  const tope = limitar(req, "inbound", 60, 60_000);
+  if (tope) return tope;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

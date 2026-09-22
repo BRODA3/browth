@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { setPath, type PathKey } from "@/lib/setPath";
 import { SEED_CEREBRO, type DocCerebro } from "@/lib/cerebro";
 import { PLAN_MES } from "@/lib/planMes";
+import { SEED_PROMPTS, type Prompt } from "@/lib/prompts";
 import {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
   EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
@@ -18,6 +19,7 @@ const DEFAULT_DATA = {
   LINEAS, LINEAS_TABLA, LINEAS_NOTA, CAPAS, EMBUDO_META, ORDEN_CONSTRUCCION,
   EQUIPO_BRODA, ESTRUCTURA, ROLES_TABLA, BRODAWEEK, ECONOMIA, PRECIOS, Q4, ESTRATEGIA, PLAN, FLUJOS,
   CEREBRO: SEED_CEREBRO as DocCerebro[],
+  PROMPTS: SEED_PROMPTS as Prompt[],
   PLAN_MES,
 };
 
@@ -54,6 +56,10 @@ function normalize(parsed: Partial<BrodaData>): BrodaData {
 
   const titulos = new Set((data.CEREBRO ?? []).map((x) => x.titulo));
   data.CEREBRO = [...(data.CEREBRO ?? []), ...SEED_CEREBRO.filter((s) => !titulos.has(s.titulo))];
+
+  // Prompts base: se suman los que faltan, sin pisar los editados ni los propios.
+  const titulosPrompt = new Set((data.PROMPTS ?? []).map((p) => p.titulo));
+  data.PROMPTS = [...(data.PROMPTS ?? []), ...SEED_PROMPTS.filter((p) => !titulosPrompt.has(p.titulo))];
 
   // Capas nuevas del flujo que todavia no estaban en lo guardado.
   data.FLUJOS = { ...DEFAULT_DATA.FLUJOS, ...(parsed.FLUJOS ?? {}) };

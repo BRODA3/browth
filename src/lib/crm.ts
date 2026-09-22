@@ -13,13 +13,14 @@ export const ETAPAS: { id: EtapaId; label: string; color: string }[] = [
   { id: "perdido", label: "Perdido", color: "#f87171" },
 ];
 
-export type FuenteId = "whatsapp" | "instagram" | "meta_ads" | "web" | "referido" | "manual";
+export type FuenteId = "whatsapp" | "instagram" | "meta_ads" | "web" | "outbound" | "referido" | "manual";
 
 export const FUENTES: { id: FuenteId; label: string; color: string }[] = [
   { id: "whatsapp", label: "WhatsApp", color: "#4ade80" },
   { id: "instagram", label: "Instagram", color: "#E14FA8" },
   { id: "meta_ads", label: "Meta Ads", color: "#4F91E0" },
   { id: "web", label: "Web", color: "#C8F542" },
+  { id: "outbound", label: "Outbound", color: "#38B79E" },
   { id: "referido", label: "Referido", color: "#8A6FE0" },
   { id: "manual", label: "Manual", color: "#8a8a8a" },
 ];
