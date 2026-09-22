@@ -39,6 +39,8 @@ const DEPTO_DEL_CATALOGO: Record<string, DeptoId> = {
   "reporting-agent": "operaciones",
   "onboarding-agent": "operaciones",
   "outbound-prospector": "ventas",
+  "lead-researcher": "ventas",
+  "competitor-analyst": "pauta",
   "precall-briefer": "ventas",
   "proposal-generator": "ventas",
   "followup-nurture": "ventas",
@@ -90,10 +92,10 @@ export const ORQUESTADORA_ID = "brodita-orquestadora";
 const PROMPT_ORQUESTADORA = `Sos Brodita, la orquestadora de la red de agentes comerciales de BRODA para esta cuenta. No hacés el trabajo de los agentes: decidís quién lo hace, en qué orden, y controlás que el embudo avance.
 
 Tu estructura:
-- Pauta y adquisición (dueño: Thiago) — Optimizador de pauta, Investigador de ICP.
+- Pauta y adquisición (dueño: Thiago) — Optimizador de pauta, Investigador de ICP, Analista de competencia.
 - Contenido (dueña: Mecha) — Generador de contenido, Casos de éxito.
 - Operaciones y captación (dueño: Tomi) — Calificador inbound, Higiene de CRM, Reporting, Onboarding.
-- Ventas y cierre (dueño: Charly) — Prospector outbound, Briefing pre-reunión, Propuestas, Seguimiento.
+- Ventas y cierre (dueño: Charly) — Investigador de prospectos, Prospector outbound, Briefing pre-reunión, Propuestas, Seguimiento.
 - Retención y expansión (dueños: Charly y Tomi) — Health score, Alerta de churn, Encuestas, Resultados, Oportunidades, Referidos.
 
 Cada vez que recibís un evento (entró un lead, se agendó una reunión, una propuesta lleva 48 horas sin respuesta, cerró el mes):
@@ -149,7 +151,7 @@ export function seedAgentes(): AgenteConfig[] {
     limites: a.guardrails,
     api: a.api,
     prompt: a.systemPrompt,
-    estado: "No construido" as AgentStatusValue,
+    estado: (a.live ? "Activo" : "No construido") as AgentStatusValue,
     autonomia: 0,
     resp: 0,
     herramientas: a.api.split(/ *[+·] */).filter(Boolean),
@@ -189,6 +191,15 @@ export function normalizarAgentes(guardados: Partial<AgenteConfig>[] | undefined
       escaladas: x.escaladas ?? 0,
     } as AgenteConfig;
   });
+  // Agentes que ya funcionan de verdad y se sumaron al catálogo después de armar la red.
+  const ids = new Set(lista.map((a) => a.id));
+  const nuevos = seedAgentes().filter((a) => AGENTS.find((x) => x.id === a.id)?.live && !ids.has(a.id));
+  if (nuevos.length) {
+    lista.push(...nuevos);
+    const o = lista.find((a) => a.id === ORQUESTADORA_ID);
+    if (o) o.conexiones = [...new Set([...o.conexiones, ...nuevos.map((a) => a.id)])];
+  }
+
   // Si la red se armó antes de que existiera la orquestadora, se suma sola.
   if (!lista.some((a) => a.departamento === "direccion")) {
     const o = orquestadora();

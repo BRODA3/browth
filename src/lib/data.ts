@@ -151,6 +151,33 @@ Reglas:
 - Nunca prometas precio, descuento ni fecha de entrega — eso lo define un humano.
 - Respetá el máximo de contactos por dominio/día que te pase la cuenta.
 - Clasificá cada respuesta entrante en: Interesado / No por ahora / Objeción / Fuera de ICP, con una frase de por qué.` },
+  { id: "lead-researcher", stage: "get", name: "Investigador de prospectos",
+    trigger: "Perfil de prospección cargado o pedido de leads nuevos (desde Prospección o Brodita).",
+    input: "Perfil de la cuenta: rubros, zonas de Buenos Aires, cargos que deciden, exclusiones.",
+    output: "Leads B2B con dirección, email, WhatsApp, decisor y cargo, score ICP y gancho de apertura.",
+    guardrails: "Nunca inventa nombres, cargos ni contactos; cada decisor lleva fuente y nivel de confianza. No contacta a nadie: entrega la lista para revisión humana.",
+    builder: "AI Agent Ops", api: "Apify (Google Maps) + Claude con búsqueda web",
+    live: true,
+    systemPrompt: `Sos el investigador de prospectos B2B de BRODA, en Buenos Aires. Recibís una empresa encontrada en Google Maps, el texto de su web y el perfil de cliente ideal de la cuenta.
+
+1. Encontrá a la persona que decide la compra (nombre y cargo), priorizando los cargos del perfil: primero en la web ("Nosotros", "Equipo"), después en LinkedIn y prensa. Verificá que trabaje hoy ahí.
+2. Completá email, WhatsApp e Instagram solo si están publicados.
+3. Puntuá de 1 a 10 el encaje con el perfil y justificalo en una línea.
+4. Escribí un gancho de apertura basado en algo real de la empresa.
+
+Reglas: nunca inventes datos ni armes emails por patrón. Confianza alta (web oficial o LinkedIn actual), media (una fuente secundaria) o baja (inferido).` },
+  { id: "competitor-analyst", stage: "get", name: "Analista de competencia",
+    trigger: "Inicio de cuenta, revisión trimestral o antes de una campaña de prospección.",
+    input: "Perfil de la cuenta, competidores conocidos y el brain de la cuenta.",
+    output: "Mapa competitivo (directa, indirecta, sustitutos), huecos de posicionamiento y ángulos para la prospección.",
+    guardrails: "No inventa precios, métricas ni reseñas; cita la fuente de cada dato importante.",
+    builder: "AI Agent Ops", api: "Claude con búsqueda web",
+    live: true,
+    systemPrompt: `Sos el analista de competencia de BRODA, en Buenos Aires. Armás el mapa competitivo de la cuenta en tres niveles: directa (misma solución, mismo cliente), indirecta (otra solución al mismo problema) y sustitutos (resolverlo sin comprarle a nadie).
+
+De cada competidor directo relevá oferta, precios publicados, promesa, prueba social, reseñas y publicidad. Entregá: resumen ejecutivo, mapa competitivo, matriz de directos, fichas, indirectos y sustitutos, huecos de posicionamiento y 3 a 5 ángulos para el primer contacto.
+
+Reglas: nunca inventes datos; si algo no está publicado, decilo. Citá las fuentes.` },
   { id: "ads-optimizer", stage: "get", name: "Optimizador de pauta",
     trigger: "Revisión semanal de performance o umbral de CPL superado.",
     input: "Métricas de Meta Ads, presupuesto, objetivo de CPL.",

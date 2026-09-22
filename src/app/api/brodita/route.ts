@@ -14,6 +14,8 @@ Tu marco es el sistema comercial real de Broda: 7 capas — Atraer, Capturar, Ca
 
 En cada mensaje te pasan el contexto de la cuenta y el cerebro de la marca (oferta, ICP, proceso, objeciones, y las notas que el equipo haya cargado). Respondé con eso. Si un dato no está en el cerebro, decilo en vez de inventarlo — nunca inventes cifras, casos ni resultados.
 
+En modo Clientes coordinás al agente de prospección de la cuenta: busca empresas B2B en Buenos Aires (Google Maps), encuentra al decisor con email y WhatsApp, y analiza la competencia directa, indirecta y sustitutos. Si te pegan las respuestas del cuestionario de un cliente, cargá el perfil con cargar_perfil_prospeccion. Si piden prospectos, usá buscar_prospectos; si el perfil no tiene rubros ni zonas y el pedido tampoco los trae, preguntalos antes. Buscar cuesta créditos de Apify: no lances búsquedas que nadie pidió.
+
 No sos solo un chat: tenés herramientas para dejar el trabajo hecho adentro de la app. Cuando el pedido se resuelve con una de ellas, usala en vez de describir lo que habría que hacer. Podés usar varias en un mismo mensaje. Después de usarlas, explicá en una o dos líneas qué preparaste.
 
 Sé breve: 3 a 6 líneas salvo que pidan un desarrollo largo. Nada de relleno.`;
@@ -58,7 +60,7 @@ const TOOLS: Anthropic.Tool[] = [
         empresa: { type: "string" },
         telefono: { type: "string" },
         email: { type: "string" },
-        fuente: { type: "string", enum: ["whatsapp", "instagram", "meta_ads", "web", "referido", "manual"] },
+        fuente: { type: "string", enum: ["whatsapp", "instagram", "meta_ads", "web", "outbound", "referido", "manual"] },
         etapa: { type: "string", enum: ["nuevo", "calificado", "reunion", "propuesta", "ganado", "perdido"] },
         valor: { type: "number", description: "Valor estimado, 0 si no se sabe" },
         nota: { type: "string", description: "Contexto: qué pidió, cómo llegó" },
@@ -92,10 +94,61 @@ const TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: {
         titulo: { type: "string" },
-        tipo: { type: "string", enum: ["marca", "oferta", "icp", "proceso", "objeciones", "caso", "nota"] },
+        tipo: { type: "string", enum: ["marca", "oferta", "icp", "proceso", "objeciones", "caso", "competencia", "nota"] },
         contenido: { type: "string", description: "El documento entero, en Markdown" },
       },
       required: ["titulo", "contenido"],
+    },
+  },
+  {
+    name: "cargar_perfil_prospeccion",
+    description: "Carga o actualiza el perfil de prospección de la cuenta activa (a quién buscar y quién decide). Usalo cuando peguen las respuestas del cuestionario del cliente o definan el cliente ideal. Solo en modo Clientes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        oferta: { type: "string", description: "Qué vende la cuenta, con precio aproximado" },
+        rubros: { type: "array", items: { type: "string" }, description: "Rubros como se buscarían en Google Maps: 'constructora', 'estudio contable'" },
+        zonas: { type: "array", items: { type: "string" }, description: "Barrios de CABA o partidos del GBA: 'Palermo', 'San Isidro', 'CABA'" },
+        cargos: { type: "array", items: { type: "string" }, description: "Cargos que deciden la compra, en orden de prioridad" },
+        tamano: { type: "string" },
+        senales: { type: "string", description: "Qué le pasa a una empresa justo antes de necesitarla" },
+        excluir: { type: "string" },
+        no_contactar: { type: "string", description: "Empresas o dominios a no contactar, separados por coma" },
+        competidores: { type: "string", description: "Competidores directos, uno por línea" },
+        alternativas: { type: "string", description: "Cómo lo resuelven si no contratan a nadie" },
+      },
+    },
+  },
+  {
+    name: "buscar_prospectos",
+    description: "Lanza la búsqueda de empresas B2B en Google Maps para la cuenta activa. Sin rubros ni zonas usa los del perfil. Usalo solo cuando pidan buscar prospectos o leads.",
+    input_schema: {
+      type: "object",
+      properties: {
+        rubros: { type: "array", items: { type: "string" } },
+        zonas: { type: "array", items: { type: "string" } },
+        por_busqueda: { type: "integer", description: "Empresas por cada búsqueda rubro × zona, entre 5 y 100. Por defecto 20." },
+      },
+    },
+  },
+  {
+    name: "analizar_competencia",
+    description: "Lanza el análisis de competencia de la cuenta activa: directa, indirecta y sustitutos, con huecos de posicionamiento y ángulos de venta.",
+    input_schema: {
+      type: "object",
+      properties: {
+        competidores: { type: "string", description: "Competidores conocidos que haya que incluir, uno por línea (opcional)" },
+      },
+    },
+  },
+  {
+    name: "pasar_leads_al_crm",
+    description: "Pasa al CRM de la cuenta los leads ya investigados que superan un score mínimo.",
+    input_schema: {
+      type: "object",
+      properties: {
+        score_minimo: { type: "integer", description: "Score ICP mínimo, de 1 a 10. Por defecto 7." },
+      },
     },
   },
 ];

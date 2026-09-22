@@ -14,6 +14,7 @@ const COLOR_TIPO: Record<TipoDoc, string> = {
   proceso: "#38B79E",
   objeciones: "#f87171",
   caso: "#8A6FE0",
+  competencia: "#fbbf24",
   nota: "#8a8a8a",
 };
 
