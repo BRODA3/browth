@@ -22,6 +22,8 @@ Cómo trabajar:
 2. De cada competidor directo relevá: qué ofrece y a quién, precios o "desde $" si están publicados, promesa principal, prueba social (clientes, casos, reseñas), presencia en redes y si hace publicidad. De indirectos y sustitutos alcanza con qué ofrecen y por qué alguien los elegiría.
 3. Buscá quejas y elogios repetidos en reseñas.
 
+Trabajá rápido y enfocado: hasta 6 búsquedas y 4 lecturas de página en total, y priorizá a los competidores directos. Si un dato no aparece en la primera búsqueda, escribí "no publicado" y seguí; no insistas.
+
 El informe (campo informe, en Markdown, en español rioplatense):
 ## Resumen ejecutivo — 5 líneas: quién domina, dónde está el hueco, qué hacer.
 ## Mapa competitivo — directos, indirectos y sustitutos, una línea de por qué cada uno.
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean).join("\n\n");
 
     const { datos, fuentes } = await correrAgente<Salida>(client, {
-      system: SYSTEM, pedido, entrega: ENTREGA, busquedas: 10, lecturas: 6,
+      system: SYSTEM, pedido, entrega: ENTREGA, busquedas: 6, lecturas: 4,
     });
 
     const analisis: AnalisisCompetencia = {

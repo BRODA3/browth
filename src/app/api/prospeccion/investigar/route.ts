@@ -15,7 +15,11 @@ const SYSTEM = `Sos el investigador de prospectos B2B de BRODA, en Buenos Aires.
 Tu trabajo:
 1. Encontrar a la persona que decide la compra (nombre y cargo), priorizando los cargos del perfil. Buscá primero en el texto de la web ("Nosotros", "Equipo", "Staff", "Quiénes somos"). Si no está, buscá en la web: site:linkedin.com/in con el nombre de la empresa y el cargo, notas de prensa o entrevistas. Verificá que la persona trabaje hoy en esa empresa.
 2. Completar contacto que falte (email, WhatsApp, Instagram) solo si lo ves publicado.
-3. Puntuar de 1 a 10 qué tan bien encaja con el perfil: rubro, tamaño (reseñas, sucursales, equipo), zona y señales de compra.
+3. Puntuar de 1 a 10 el encaje con el perfil. La escala es estricta y el número tiene que coincidir con lo que escribas en el motivo: si el motivo menciona una duda o algo que no encaja, el score no puede ser 9 ni 10.
+   - 9-10: rubro, zona y tamaño encajan, y además hay una señal de compra concreta y verificable.
+   - 7-8: rubro, zona y tamaño encajan, sin señal de compra clara.
+   - 5-6: encaja el rubro pero hay dudas de tamaño, zona o capacidad de pago.
+   - 1-4: fuera de perfil.
 4. Escribir un gancho: una frase para abrir la conversación basada en algo real y específico de esa empresa. Nada genérico.
 
 Reglas:
@@ -55,6 +59,24 @@ interface Salida {
   fuente_decisor: string; email: string; whatsapp: string; instagram: string;
   score: number; motivo: string; gancho: string; fuera_de_icp: boolean;
 }
+
+// El modelo a veces filtra fragmentos de la herramienta en un campo suelto.
+// Nada de lo que devuelve entra a la tabla ni al CRM sin pasar por acá.
+const texto = (v: unknown, max = 400): string => {
+  const s = typeof v === "string" ? v.trim() : "";
+  if (!s || /[<>]|antml|parameter name=/i.test(s)) return "";
+  return s.slice(0, max);
+};
+
+const url = (v: unknown): string => {
+  const s = texto(v, 300);
+  return /^https?:\/\/[^\s]+$/.test(s) ? s : "";
+};
+
+const usuario = (v: unknown): string => {
+  const s = texto(v, 120);
+  return /^[@a-zA-Z0-9._/:-]+$/.test(s) ? s : "";
+};
 
 /** Home más las páginas de contacto y equipo que se encuentren linkeadas. */
 async function leerWeb(web: string): Promise<{ texto: string; emails: string[]; whatsapps: string[] }> {
@@ -113,23 +135,27 @@ export async function POST(req: NextRequest) {
 
     const { datos } = await correrAgente<Salida>(client, { system: SYSTEM, pedido, entrega: ENTREGA, busquedas: 3, lecturas: 2 });
 
-    const email = lead.email || deLaWeb.email || datos.email;
+    const emailModelo = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(texto(datos.email, 120)) ? texto(datos.email, 120) : "";
+    const waModelo = texto(datos.whatsapp, 40).replace(/[^\d+\s()-]/g, "").trim();
     const waWeb = web.whatsapps[0] ?? "";
+    const decisor = texto(datos.decisor, 80);
+    const score = Number.isFinite(datos.score) ? Math.max(1, Math.min(10, Math.round(datos.score))) : null;
+
     const resultado: Investigacion = {
-      email,
+      email: lead.email || deLaWeb.email || emailModelo,
       emailGenerico: lead.emailGenerico || deLaWeb.emailGenerico,
-      whatsapp: waWeb || lead.whatsapp || datos.whatsapp,
-      whatsappConfirmado: Boolean(waWeb) || lead.whatsappConfirmado || Boolean(datos.whatsapp),
-      instagram: lead.instagram || datos.instagram,
+      whatsapp: waWeb || lead.whatsapp || waModelo,
+      whatsappConfirmado: Boolean(waWeb) || lead.whatsappConfirmado || Boolean(waModelo),
+      instagram: lead.instagram || usuario(datos.instagram),
       linkedinEmpresa: lead.linkedinEmpresa,
-      decisor: datos.decisor,
-      cargo: datos.cargo,
-      linkedinDecisor: datos.linkedin_decisor,
-      confianza: datos.decisor ? datos.confianza : "",
-      fuenteDecisor: datos.fuente_decisor,
-      score: datos.fuera_de_icp ? Math.min(datos.score, 3) : Math.max(1, Math.min(10, datos.score)),
-      motivo: datos.motivo,
-      gancho: datos.gancho,
+      decisor,
+      cargo: decisor ? texto(datos.cargo, 80) : "",
+      linkedinDecisor: url(datos.linkedin_decisor),
+      confianza: decisor ? datos.confianza : "",
+      fuenteDecisor: decisor ? url(datos.fuente_decisor) : "",
+      score: score == null ? null : datos.fuera_de_icp ? Math.min(score, 3) : score,
+      motivo: texto(datos.motivo, 300),
+      gancho: texto(datos.gancho, 400),
     };
     return NextResponse.json({ investigacion: resultado });
   } catch (err) {
