@@ -68,6 +68,11 @@ export default function Prospeccion({
   const [verAnalisis, setVerAnalisis] = useState<string | null>(null);
   const cortar = useRef(false);
 
+  // Lo que va a costar la búsqueda, con el precio por empresa medido en corridas reales.
+  const combinaciones = Math.min(perfil.rubros.length * perfil.zonas.length, 40);
+  const maximo = combinaciones * perfil.porBusqueda;
+  const estimado = maximo * 0.0065;
+
   const pendientes = leads.filter((l) => l.estado === "encontrado" || l.estado === "error");
   const investigados = leads.filter((l) => l.score != null);
   const visibles = [...leads].filter((l) => l.estado !== "descartado" && (l.score ?? 10) >= minScore)
@@ -84,13 +89,19 @@ export default function Prospeccion({
 
   /* ---------------- Búsqueda en Google Maps ---------------- */
 
-  async function buscar() {
+  async function buscar(confirmado = false) {
     setError(null);
     if (!perfil.rubros.length || !perfil.zonas.length) {
       setTab("perfil");
       setError("Para buscar hacen falta al menos un rubro y una zona.");
       return;
     }
+    // Cada empresa se paga: sin este aviso es fácil quemar el crédito del mes de un clic.
+    if (!confirmado && !confirm(
+      `Vas a buscar ${combinaciones} combinaciones de rubro y zona, hasta ${maximo} empresas.\n\n` +
+      `Costo estimado en Apify: US$ ${estimado.toFixed(2)} (el plan gratis da US$ 5 por mes).\n\n` +
+      `¿Lanzo la búsqueda?`
+    )) return;
     try {
       const res = await fetch("/api/prospeccion/buscar", {
         method: "POST",
@@ -104,6 +115,36 @@ export default function Prospeccion({
       setAviso(`Buscando en Google Maps: ${json.busquedas} búsquedas, hasta ${json.maximo} empresas. Tarda unos minutos; podés seguir usando la app.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo lanzar la búsqueda.");
+    }
+  }
+
+  /** Suma al listado lo que trajo una corrida, sin repetidos ni excluidos. */
+  function guardarLeads(nuevos: Lead[], costoUsd?: number | null) {
+    let sumados = 0;
+    onLeads((prev) => {
+      const limpios = depurar(nuevos, perfil, prev);
+      sumados = limpios.length;
+      return [...prev, ...limpios];
+    });
+    setAviso(`${sumados || nuevos.length} empresas nuevas${costoUsd != null ? ` · costo de Apify US$ ${Number(costoUsd).toFixed(2)}` : ""}. Ahora tocá "Investigar" para encontrar a los decisores.`);
+  }
+
+  /** Rescata una corrida vieja de Apify (por ejemplo, una que se cortó) sin volver a pagarla. */
+  async function recuperar(runId: string) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/prospeccion/estado?run=${encodeURIComponent(runId.trim())}`);
+      const json = await res.json();
+      if (!res.ok || json.estado === "fallo") throw new Error(json.error ?? "No pude recuperar esa búsqueda.");
+      if (json.estado === "corriendo") {
+        onBusqueda({ runId: runId.trim(), inicio: new Date().toISOString(), maximo: 0 });
+        setAviso("Esa búsqueda todavía está corriendo: la sigo desde acá.");
+        return;
+      }
+      guardarLeads(json.leads as Lead[], json.costoUsd);
+      if (json.estado === "parcial") setError(json.error);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No pude recuperar esa búsqueda.");
     }
   }
 
@@ -126,14 +167,10 @@ export default function Prospeccion({
           timer = setTimeout(consultar, 8000);
           return;
         }
-        let nuevos = 0;
-        onLeads((prev) => {
-          const limpios = depurar(json.leads as Lead[], perfil, prev);
-          nuevos = limpios.length;
-          return [...prev, ...limpios];
-        });
+        guardarLeads(json.leads as Lead[], json.costoUsd);
         onBusqueda(null);
-        setAviso(`Listo: ${nuevos || (json.leads as Lead[]).length} empresas nuevas${json.costoUsd != null ? ` · costo de Apify US$ ${Number(json.costoUsd).toFixed(2)}` : ""}. Ahora tocá "Investigar" para encontrar a los decisores.`);
+        // "parcial": la corrida se cortó pero alcanzó a juntar empresas.
+        if (json.estado === "parcial") setError(json.error);
       } catch {
         if (vivo) timer = setTimeout(consultar, 15000);
       }
@@ -305,10 +342,10 @@ export default function Prospeccion({
               title="Leads"
               sub={busqueda
                 ? `Buscando en Google Maps desde las ${fmtFecha(busqueda.inicio)}… ${encontrados} de hasta ${busqueda.maximo} empresas.`
-                : "1) Buscá empresas con el perfil de la cuenta. 2) Investigá: el agente lee cada web y busca al decisor. 3) Pasá los mejores al CRM."}
+                : `1) Buscá empresas con el perfil de la cuenta. 2) Investigá: el agente lee cada web y busca al decisor. 3) Pasá los mejores al CRM. · Próxima búsqueda: ${combinaciones} combinaciones, hasta ${maximo} empresas, unos US$ ${estimado.toFixed(2)} de Apify.`}
               right={
                 <div className="flex gap-2 flex-wrap justify-end">
-                  <button onClick={buscar} disabled={Boolean(busqueda)} className={btnPrimario}>
+                  <button onClick={() => buscar()} disabled={Boolean(busqueda)} className={btnPrimario}>
                     {busqueda ? "Buscando…" : "⌖ Buscar empresas"}
                   </button>
                   {investigando ? (
@@ -341,8 +378,19 @@ export default function Prospeccion({
             )}
 
             {leads.length === 0 ? (
-              <div className="text-center text-ink-faint text-[13px] py-12 border border-dashed border-border-strong rounded-[var(--r-md)]">
-                Todavía no hay leads. {perfil.rubros.length ? "Tocá “Buscar empresas”." : "Primero completá el perfil de la cuenta."}
+              <div className="flex flex-col items-center gap-3 text-center text-ink-faint text-[13px] py-12 border border-dashed border-border-strong rounded-[var(--r-md)] px-4">
+                <div>Todavía no hay leads. {perfil.rubros.length ? "Tocá “Buscar empresas”." : "Primero completá el perfil de la cuenta."}</div>
+                <div className="flex gap-2 items-center flex-wrap justify-center">
+                  <span className="text-[11.5px]">¿Se te cortó una búsqueda? Pegá su ID de Apify y la rescato sin pagarla de nuevo:</span>
+                  <input
+                    placeholder="ID de la corrida"
+                    className={`${inputCls} max-w-[200px]`}
+                    onKeyDown={(e) => {
+                      const v = (e.target as HTMLInputElement).value.trim();
+                      if (e.key === "Enter" && v) { recuperar(v); (e.target as HTMLInputElement).value = ""; }
+                    }}
+                  />
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">

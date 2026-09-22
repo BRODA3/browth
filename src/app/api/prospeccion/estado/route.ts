@@ -57,15 +57,27 @@ export async function GET(req: NextRequest) {
     const items = await fetch(`https://api.apify.com/v2/datasets/${defaultDatasetId}`, { headers, cache: "no-store" }).then((r) => r.json()).catch(() => null);
     return NextResponse.json({ estado: "corriendo", encontrados: items?.data?.itemCount ?? 0 });
   }
-  if (status !== "SUCCEEDED") {
-    return NextResponse.json({ estado: "fallo", error: `La búsqueda terminó con estado ${status}.` });
-  }
 
+  // Una corrida cortada (límite de crédito, tiempo, cancelada a mano) igual deja
+  // en Apify todo lo que alcanzó a juntar: se entrega eso en vez de perderlo.
   const lugares: Lugar[] = await fetch(
     `https://api.apify.com/v2/datasets/${defaultDatasetId}/items?clean=true&format=json`,
     { headers, cache: "no-store" }
-  ).then((r) => r.json());
+  ).then((r) => r.json()).catch(() => []);
 
-  const leads = lugares.filter((p) => s(p.title) && !p.permanentlyClosed && !p.temporarilyClosed).map(aLead);
+  const leads = (Array.isArray(lugares) ? lugares : []).filter((p) => s(p.title) && !p.permanentlyClosed && !p.temporarilyClosed).map(aLead);
+
+  if (status !== "SUCCEEDED") {
+    if (leads.length === 0) {
+      return NextResponse.json({ estado: "fallo", error: `La búsqueda terminó con estado ${status} y sin resultados. Si fue por el límite de crédito de Apify, se renueva el 1 de cada mes.` });
+    }
+    return NextResponse.json({
+      estado: "parcial",
+      leads,
+      costoUsd: usageTotalUsd ?? null,
+      error: `La búsqueda se cortó (estado ${status}), probablemente por el límite de crédito de Apify. Igual rescaté ${leads.length} empresas de las que alcanzó a juntar.`,
+    });
+  }
+
   return NextResponse.json({ estado: "listo", leads, costoUsd: usageTotalUsd ?? null });
 }
