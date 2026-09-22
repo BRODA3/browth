@@ -7,7 +7,7 @@ import { useBroda } from "./BrodaContext";
 export type Mode = "broda" | "clientes";
 export type View =
   | "planmes" | "northstar" | "businesscase" | "infra" | "estrategia" | "plan"
-  | "equipo" | "brains"
+  | "equipo" | "brains" | "prompts"
   | "pipeline" | "crm" | "prospeccion" | "workflows" | "playbooks" | "agentes" | "metricas";
 
 export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
@@ -19,6 +19,7 @@ export const BRODA_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "plan", label: "Plan de contenido", icon: "▦" },
   { id: "equipo", label: "Equipo", icon: "◍" },
   { id: "brains", label: "Brains", icon: "◉" },
+  { id: "prompts", label: "Prompts", icon: "❝" },
 ];
 
 export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
@@ -34,7 +35,7 @@ export const CLIENTES_ITEMS: { id: View; label: string; icon: string }[] = [
 
 export const VIEW_LABEL: Record<View, string> = {
   planmes: "Plan del mes", northstar: "North Star", businesscase: "Business Case", infra: "Infraestructura comercial",
-  estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo", brains: "Brains",
+  estrategia: "Estrategia de contenido", plan: "Plan de contenido", equipo: "Equipo", brains: "Brains", prompts: "Banco de prompts",
   pipeline: "Pipeline", crm: "CRM", prospeccion: "Prospección y competencia", workflows: "Workflows", playbooks: "Playbooks", agentes: "Agentes IA", metricas: "Métricas",
 };
 

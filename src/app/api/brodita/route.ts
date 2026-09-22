@@ -16,7 +16,9 @@ En cada mensaje te pasan el contexto de la cuenta y el cerebro de la marca (ofer
 
 En modo Clientes coordinás al agente de prospección de la cuenta: busca empresas B2B en Buenos Aires (Google Maps), encuentra al decisor con email y WhatsApp, y analiza la competencia directa, indirecta y sustitutos. Si te pegan las respuestas del cuestionario de un cliente, cargá el perfil con cargar_perfil_prospeccion. Si piden prospectos, usá buscar_prospectos; si el perfil no tiene rubros ni zonas y el pedido tampoco los trae, preguntalos antes. Buscar cuesta créditos de Apify: no lances búsquedas que nadie pidió.
 
-No sos solo un chat: tenés herramientas para dejar el trabajo hecho adentro de la app. Cuando el pedido se resuelve con una de ellas, usala en vez de describir lo que habría que hacer. Podés usar varias en un mismo mensaje. Después de usarlas, explicá en una o dos líneas qué preparaste.
+BRODA tiene un banco de prompts: los pedidos que ya sabemos que funcionan (el que va al proyecto del cliente, el cuestionario, los primeros contactos). En el contexto te llega la lista. Si lo que piden ya está ahí, traelo con usar_prompt en vez de escribirlo de nuevo; si definen uno nuevo que van a repetir, guardalo con guardar_prompt.
+
+No sos solo un chat: tenés herramientas para dejar el trabajo hecho adentro de la app. Cuando el pedido se resuelve con una de ellas, usala en vez de describir lo que habría que hacer. Podés usar varias en un mismo mensaje. Escribí siempre al menos una línea de texto junto con la herramienta, diciendo qué preparaste y qué tiene que hacer el equipo: si contestás solo con la herramienta, en la pantalla aparece una tarjeta sin ninguna explicación.
 
 Sé breve: 3 a 6 líneas salvo que pidan un desarrollo largo. Nada de relleno.`;
 
@@ -96,6 +98,31 @@ const TOOLS: Anthropic.Tool[] = [
         titulo: { type: "string" },
         tipo: { type: "string", enum: ["marca", "oferta", "icp", "proceso", "objeciones", "caso", "competencia", "nota"] },
         contenido: { type: "string", description: "El documento entero, en Markdown" },
+      },
+      required: ["titulo", "contenido"],
+    },
+  },
+  {
+    name: "usar_prompt",
+    description: "Trae un prompt del banco de BRODA y lo deja listo para copiar, con el nombre de la cuenta ya completado. Usalo cuando pidan 'el prompt de…', 'pasame el cuestionario' o necesiten el texto exacto que le mandamos a un proyecto o a un lead. En el contexto tenés la lista de prompts disponibles.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nombre: { type: "string", description: "Título del prompt, o parte de él" },
+      },
+      required: ["nombre"],
+    },
+  },
+  {
+    name: "guardar_prompt",
+    description: "Guarda un prompt nuevo en el banco de BRODA, o actualiza uno con el mismo título. Usalo cuando definan un pedido que van a repetir. Poné [CLIENTE] donde vaya el nombre de la cuenta.",
+    input_schema: {
+      type: "object",
+      properties: {
+        titulo: { type: "string" },
+        categoria: { type: "string", enum: ["prospeccion", "contacto", "cliente", "contenido", "interno"] },
+        cuando: { type: "string", description: "Cuándo se usa y dónde se pega" },
+        contenido: { type: "string", description: "El prompt entero" },
       },
       required: ["titulo", "contenido"],
     },

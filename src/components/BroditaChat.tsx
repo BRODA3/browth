@@ -22,6 +22,8 @@ const ETIQUETA_ACCION: Record<string, string> = {
   crear_oportunidad: "Cargar en el CRM",
   agregar_pieza_contenido: "Sumar al plan de contenido",
   guardar_en_cerebro: "Guardar en el cerebro",
+  usar_prompt: "Traer un prompt del banco",
+  guardar_prompt: "Guardar en el banco de prompts",
   cargar_perfil_prospeccion: "Cargar perfil de prospección",
   buscar_prospectos: "Buscar prospectos",
   analizar_competencia: "Analizar la competencia",
@@ -35,6 +37,8 @@ function resumen(a: AccionBrodita): string {
   if (a.tool === "crear_oportunidad") return [txt("nombre"), txt("empresa")].filter(Boolean).join(" · ");
   if (a.tool === "agregar_pieza_contenido") return [txt("formato"), txt("tema")].filter(Boolean).join(" · ");
   if (a.tool === "guardar_en_cerebro") return txt("titulo");
+  if (a.tool === "usar_prompt") return txt("nombre");
+  if (a.tool === "guardar_prompt") return txt("titulo");
   const lista = (k: string) => (Array.isArray(i[k]) ? (i[k] as string[]).join(", ") : "");
   if (a.tool === "cargar_perfil_prospeccion") return [lista("rubros"), lista("zonas")].filter(Boolean).join(" · ");
   if (a.tool === "buscar_prospectos") return [lista("rubros") || "rubros del perfil", lista("zonas") || "zonas del perfil"].join(" en ");
@@ -67,7 +71,7 @@ export default function BroditaChat({
       return `Modo: Clientes. Cuenta activa: ${client.name} (${client.industry || "sin rubro"}, tier ${client.tier}).\n${contextoCuenta}`;
     }
     const capasResumen = data.CAPAS.map((c) => `${c.nombre}: ${c.estado}`).join(", ");
-    return `Modo: Broda (interno). Infraestructura comercial — ${capasResumen}. Foco del trimestre: ${data.CAPAS.find((c) => c.estado === "foco")?.nombre || "sin definir"}. Líneas de negocio: ${data.LINEAS.map((l) => `${l.nombre} (${l.estado})`).join(", ")}.`;
+    return `Modo: Broda (interno). Infraestructura comercial — ${capasResumen}. Foco del trimestre: ${data.CAPAS.find((c) => c.estado === "foco")?.nombre || "sin definir"}. Líneas de negocio: ${data.LINEAS.map((l) => `${l.nombre} (${l.estado})`).join(", ")}.\n${contextoCuenta}`;
   }
 
   function toggle() {
@@ -110,8 +114,12 @@ export default function BroditaChat({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error de Brodita");
-      if (json.reply) setMessages((m) => [...m, { role: "assistant", text: json.reply }]);
-      setAcciones(json.acciones ?? []);
+      const acc: AccionBrodita[] = json.acciones ?? [];
+      // A veces resuelve todo con la herramienta y no escribe nada: sin esta línea
+      // la tarjeta queda suelta, sin contexto de qué preparó.
+      const texto = json.reply || (acc.length ? "Te lo dejo preparado acá abajo, revisalo y aplicalo." : "");
+      if (texto) setMessages((m) => [...m, { role: "assistant", text: texto }]);
+      setAcciones(acc);
     } catch (e) {
       setMessages((m) => [...m, { role: "assistant", text: e instanceof Error ? e.message : "Se cortó la señal, probá de nuevo." }]);
     } finally {

@@ -21,6 +21,8 @@ import { CANALES, type PiezaPlan } from "@/lib/broda";
 import { contextoDeDocs, type DocCerebro } from "@/lib/cerebro";
 import Metricas from "./Metricas";
 import Prospeccion, { type BusquedaEnCurso, type PedidoProspeccion } from "./Prospeccion";
+import Prompts from "./Prompts";
+import { buscarPrompt, completar, nuevoPrompt, type CategoriaPrompt, type Prompt } from "@/lib/prompts";
 import { PERFIL_VACIO, perfilATexto, type AnalisisCompetencia, type Lead, type PerfilProspeccion } from "@/lib/prospeccion";
 import AgentesIA from "./AgentesIA";
 import PlanMes from "./PlanMes";
@@ -204,13 +206,15 @@ function AppInner() {
     }));
   }
 
+  const titulosPrompts = (brodaData.PROMPTS ?? []).map((p) => `"${p.titulo}"`).join(", ");
+
   /** Lo que Brodita tiene que saber de la operación de la cuenta, además del brain. */
-  const contextoCuenta = mode === "clientes" ? [
+  const contextoCuenta = [`Prompts en el banco: ${titulosPrompts || "ninguno"}.`, mode === "clientes" ? [
     perfil.rubros.length ? `Perfil de prospección:\n${perfilATexto(perfil)}` : "Perfil de prospección: sin cargar.",
     `Prospección: ${leadsCliente.length} leads (${leadsCliente.filter((l) => l.score != null).length} investigados, ${leadsCliente.filter((l) => (l.score ?? 0) >= 7).length} con score 7+, ${leadsCliente.filter((l) => l.estado === "en_crm").length} ya en el CRM).`,
     `CRM: ${(crmByClient[selectedClientId] ?? []).length} oportunidades.`,
     (competenciaByClient[selectedClientId] ?? []).length ? `Hay un análisis de competencia del ${new Date(competenciaByClient[selectedClientId][0].fecha).toLocaleDateString("es-AR")}.` : "Sin análisis de competencia todavía.",
-  ].join("\n") : "";
+  ].join("\n") : ""].filter(Boolean).join("\n");
 
 
   /** Lo que Brodita deja hecho cuando el equipo toca "Aplicar". */
@@ -271,6 +275,32 @@ function AppInner() {
       }
       updateBroda(["CEREBRO"], [...(brodaData.CEREBRO ?? []), doc]);
       return `Guardé "${doc.titulo}" en el brain de BRODA. Ya lo usa en las próximas respuestas.`;
+    }
+
+    if (a.tool === "usar_prompt") {
+      const p = buscarPrompt(brodaData.PROMPTS ?? [], str("nombre"));
+      if (!p) return `No encontré un prompt que se llame "${str("nombre")}" en el banco.`;
+      setMode("broda");
+      setView("prompts");
+      return `${p.titulo} — copialo desde el banco de prompts:\n\n${completar(p.contenido, mode === "clientes" ? client.name : undefined)}`;
+    }
+
+    if (a.tool === "guardar_prompt") {
+      const prompts: Prompt[] = brodaData.PROMPTS ?? [];
+      const titulo = str("titulo", "Prompt de Brodita");
+      const nuevo = nuevoPrompt({
+        titulo,
+        categoria: (str("categoria", "interno") as CategoriaPrompt),
+        cuando: str("cuando"),
+        contenido: str("contenido"),
+      });
+      const existente = prompts.find((x) => x.titulo.toLowerCase() === titulo.toLowerCase());
+      updateBroda(["PROMPTS"], existente
+        ? prompts.map((x) => (x.id === existente.id ? { ...existente, ...nuevo, id: existente.id } : x))
+        : [...prompts, nuevo]);
+      setMode("broda");
+      setView("prompts");
+      return `${existente ? "Actualicé" : "Guardé"} "${titulo}" en el banco de prompts.`;
     }
 
     const lista = (k: string) => (Array.isArray(i[k]) ? (i[k] as unknown[]).filter((x): x is string => typeof x === "string" && x.trim() !== "") : []);
@@ -448,6 +478,7 @@ function AppInner() {
               />
             )
           )}
+          {view === "prompts" && <Prompts cuenta={mode === "clientes" ? client.name : undefined} />}
           {view === "equipo" && (
             <>
               <div className="mb-6">
