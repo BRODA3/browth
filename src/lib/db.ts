@@ -1,37 +1,48 @@
-import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 
 // Base de datos de la prospección. Hasta acá los leads vivían solo en el
 // navegador de cada persona; eso alcanza mientras alguien los busca a mano,
 // pero no cuando un flujo de n8n deja leads nuevos todos los lunes a la
 // madrugada y nadie tiene la pestaña abierta.
 //
-// Se activa sola cuando existe DATABASE_URL (la inyecta la integración de Neon
-// en Vercel). Sin esa variable la app sigue funcionando como antes, contra el
-// navegador, así que no rompe nada en desarrollo.
+// Se activa sola cuando existe DATABASE_URL. Sin esa variable la app sigue
+// funcionando como antes, contra el navegador, así que no rompe nada.
+//
+// Usa postgres.js y no el driver de Neon a propósito: Neon habla por su propio
+// proxy y no se conecta a un Postgres común, así que con él no se podría
+// desarrollar contra el contenedor local. postgres.js sirve para los dos, y la
+// misma DATABASE_URL apunta al Docker de casa o a Neon en producción.
 
 export const hayBase = () => Boolean(process.env.DATABASE_URL);
 
 /**
- * El driver tipa el resultado como una unión de varias formas posibles según
- * las opciones de la consulta. Nosotros siempre usamos la forma simple —un
- * arreglo de filas— así que lo estrechamos acá y no en cada ruta.
+ * El driver tipa el resultado con su propia clase de arreglo. Nosotros siempre
+ * queremos la forma simple —filas— así que lo estrechamos acá y no en cada ruta.
  */
 type Consulta = <T = Record<string, unknown>>(
   plantilla: TemplateStringsArray,
   ...valores: unknown[]
 ) => Promise<T[]>;
 
-// Inicialización perezosa: neon() explota si no hay DATABASE_URL, y el módulo
-// se evalúa durante el build, cuando la variable todavía puede no existir.
-let _sql: Consulta | null = null;
+// Inicialización perezosa: conectar explota sin DATABASE_URL, y el módulo se
+// evalúa durante el build, cuando la variable todavía puede no existir.
+let _sql: ReturnType<typeof postgres> | null = null;
 
 export function sql(): Consulta {
   if (!_sql) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("Falta DATABASE_URL: la base de datos no está conectada.");
-    _sql = neon(url) as unknown as Consulta;
+    _sql = postgres(url, {
+      // Cada función de Vercel es un proceso corto: una conexión alcanza, y así
+      // no se agota el cupo del pooler cuando hay varias corriendo a la vez.
+      max: 1,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      // El Postgres de desarrollo no tiene TLS; Neon sí y lo pide en la URL.
+      ssl: url.includes("sslmode=require") ? "require" : false,
+    });
   }
-  return _sql;
+  return _sql as unknown as Consulta;
 }
 
 /**

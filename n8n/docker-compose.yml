@@ -8,6 +8,26 @@
 # Las claves salen del archivo .env que está al lado de este (ver .env.example).
 
 services:
+  # Postgres para desarrollo local. En producción esto no se usa: ahí la base
+  # la pone la integración de Neon en Vercel, que inyecta su propia DATABASE_URL.
+  postgres:
+    image: postgres:17-alpine
+    container_name: browth-postgres
+    environment:
+      - POSTGRES_USER=browth
+      - POSTGRES_PASSWORD=browth
+      - POSTGRES_DB=browth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-datos:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U browth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   scraper:
     image: gosom/google-maps-scraper
     container_name: browth-scraper
@@ -38,11 +58,18 @@ services:
       - SCRAPER_URL=http://scraper:8080
     volumes:
       - n8n-datos:/home/node/.n8n
+    # En desarrollo Browth corre fuera de Docker, en tu máquina. Desde adentro
+    # del contenedor "localhost" es el contenedor mismo, así que el flujo tiene
+    # que llamar a host.docker.internal. En Docker Desktop viene resuelto; en
+    # Linux hace falta este alias.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - scraper
     restart: unless-stopped
 
 volumes:
+  postgres-datos:
   scraper-datos:
   scraper-playwright:
   n8n-datos:

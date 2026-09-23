@@ -24,42 +24,42 @@ n8n  ──POST /api/v1/jobs──▶  scraper  ──▶  Google Maps
    nuevos.
 6. En Browth, la pestaña Prospección tiene el botón **«↓ Traer de n8n»**.
 
-## Puesta en marcha
+## Puesta en marcha en tu máquina
 
-### 1. La base de datos de Browth
+Todo corre local: no hace falta cuenta en ningún servicio ni tocar Vercel.
 
-Los leads necesitan dónde vivir. En **Vercel → proyecto browth → Storage →
-Create Database → Neon**. Vercel crea la base y carga `DATABASE_URL` solo.
-Las tablas se crean solas la primera vez que entra un lead.
-
-### 2. Las variables en Vercel
-
-En **Settings → Environment Variables**, marcando *Production* y *Preview*:
-
-| Variable | Qué es |
-|---|---|
-| `BROWTH_INGESTA_TOKEN` | Inventalo, largo. Es la llave con la que n8n deja leads. |
-| `DATABASE_URL` | La pone Neon sola. |
-| `BROWTH_ACCESS_CODE` | El código de acceso del equipo. |
-| `ANTHROPIC_API_KEY` | Para investigar leads y analizar competencia. |
-
-Después **Redeploy**, si no las variables no entran.
-
-### 3. Levantar n8n y el scraper
+### 1. Levantar los contenedores
 
 ```bash
 cd n8n
-cp .env.example .env     # y completalo
+cp .env.example .env     # completá BROWTH_INGESTA_TOKEN
 docker compose up -d
 ```
 
+Son tres: **Postgres** (la base), **el scraper** y **n8n**.
+
 - n8n → http://localhost:5678
 - scraper → http://localhost:8080 (la API se documenta sola en `/api/docs`)
+- Postgres → `postgres://browth:browth@localhost:5432/browth`
 
 La primera vez el scraper descarga Playwright: tarda varios minutos. Queda
 cacheado en un volumen, así que pasa una sola vez.
 
-### 4. Importar el flujo
+### 2. Las variables de Browth
+
+En el `.env.local` de la raíz del proyecto:
+
+```
+DATABASE_URL=postgres://browth:browth@localhost:5432/browth
+BROWTH_INGESTA_TOKEN=<el mismo que pusiste en n8n/.env>
+```
+
+El token tiene que ser **idéntico** en los dos archivos, o la ingesta devuelve
+401. Las tablas se crean solas la primera vez que entra un lead.
+
+Después `npm run dev`.
+
+### 3. Importar el flujo
 
 En n8n: **Workflows → ⋯ → Import from File** → `prospeccion-semanal.json`.
 Después abrí el nodo **«Perfil y búsquedas de la semana»** y cambiá `CUENTA`,
@@ -68,6 +68,17 @@ de arriba a la derecha.
 
 Para probarlo sin esperar al lunes: **Execute Workflow**. Bajá `POR_SEMANA` a
 2 y el nodo «Esperar a que termine» a 5 minutos mientras probás.
+
+## Cuando pase a producción
+
+1. **Vercel → browth → Storage → Create Database → Neon.** Inyecta su propia
+   `DATABASE_URL`; no hay que cambiar una línea de código, porque el driver
+   (postgres.js) habla con los dos.
+2. En **Settings → Environment Variables** cargá `BROWTH_INGESTA_TOKEN`,
+   `ANTHROPIC_API_KEY`, `APIFY_TOKEN` y `BROWTH_ACCESS_CODE`. Después
+   **Redeploy**, si no las variables no entran.
+3. En `n8n/.env`, cambiá `BROWTH_URL` a `https://browth-sandy.vercel.app` y poné
+   el mismo token que cargaste en Vercel.
 
 ## Para otro cliente
 
