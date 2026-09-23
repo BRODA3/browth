@@ -6,9 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, StatCard, Pill } from "./ui";
 import Markdown from "./Markdown";
 import {
-  CUESTIONARIO, ZONAS_SUGERIDAS, depurar, leadsACsv, perfilATexto,
+  CUESTIONARIO, ZONAS_SUGERIDAS, depurar, leadsACsv, perfilATexto, porGrupo,
   type AnalisisCompetencia, type Investigacion, type Lead, type PerfilProspeccion,
 } from "@/lib/prospeccion";
+import { PROMPT_PERFIL_PROYECTO } from "@/lib/prompts";
 
 // Agente de research de la cuenta: arma el perfil de búsqueda, trae empresas de
 // Google Maps, investiga a cada una (decisor, contacto, score, gancho) y analiza
@@ -395,25 +396,34 @@ export default function Prospeccion({
                 </div>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[12px] border-collapse min-w-[1100px]">
-                  <thead>
-                    <tr className="text-left font-display font-extrabold uppercase text-[9.5px] tracking-wide text-ink-faint border-b border-border-strong">
-                      <th className="px-2 py-2 w-8" />
-                      <th className="px-2 py-2">Empresa</th>
-                      <th className="px-2 py-2">Contacto</th>
-                      <th className="px-2 py-2">Decisor</th>
-                      <th className="px-2 py-2 w-16">Score</th>
-                      <th className="px-2 py-2">Gancho</th>
-                      <th className="px-2 py-2 w-24" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibles.map((l) => <FilaLead key={l.id} l={l} elegido={elegidos.has(l.id)} onToggle={() => toggle(l.id)}
-                      onReintentar={() => investigarUno(l).catch((e) => setError(e instanceof Error ? e.message : String(e)))}
-                      onDescartar={() => onLeads((prev) => prev.map((x) => (x.id === l.id ? { ...x, estado: "descartado" } : x)))} />)}
-                  </tbody>
-                </table>
+              <div className="flex flex-col gap-6">
+                {porGrupo(visibles).map(({ grupo, leads: delGrupo }) => (
+                  <section key={grupo.id}>
+                    <div className="flex items-baseline gap-2.5 flex-wrap mb-2">
+                      <span className="grid place-items-center w-6 h-6 rounded-[6px] bg-accent/15 text-accent font-display font-extrabold text-[12px] shrink-0">
+                        {grupo.id}
+                      </span>
+                      <h3 className="text-[15px] font-semibold text-ink">{grupo.nombre}</h3>
+                      <span className="font-display font-extrabold uppercase text-[9.5px] tracking-wide text-ink-faint">
+                        {delGrupo.length} {delGrupo.length === 1 ? "empresa" : "empresas"}
+                      </span>
+                      <p className="w-full text-[12px] text-ink-faint m-0">{grupo.detalle}</p>
+                    </div>
+                    <div className="border border-border rounded-[var(--r-md)] overflow-hidden">
+                      {delGrupo.map((l, n) => (
+                        <FichaLead
+                          key={l.id}
+                          l={l}
+                          rayada={n % 2 === 1}
+                          elegido={elegidos.has(l.id)}
+                          onToggle={() => toggle(l.id)}
+                          onReintentar={() => investigarUno(l).catch((e) => setError(e instanceof Error ? e.message : String(e)))}
+                          onDescartar={() => onLeads((prev) => prev.map((x) => (x.id === l.id ? { ...x, estado: "descartado" } : x)))}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
               </div>
             )}
           </Card>
@@ -489,32 +499,50 @@ export default function Prospeccion({
   );
 }
 
-function FilaLead({ l, elegido, onToggle, onReintentar, onDescartar }: {
-  l: Lead; elegido: boolean; onToggle: () => void; onReintentar: () => void; onDescartar: () => void;
+function FichaLead({ l, rayada, elegido, onToggle, onReintentar, onDescartar }: {
+  l: Lead; rayada: boolean; elegido: boolean; onToggle: () => void; onReintentar: () => void; onDescartar: () => void;
 }) {
-  const link = (href: string, texto: string) => <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-accent break-all">{texto}</a>;
+  const link = (href: string, texto: React.ReactNode) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-accent break-words">{texto}</a>
+  );
+  const investigado = l.score != null || l.decisor || l.estado === "investigando" || l.estado === "error";
+
   return (
-    <tr className={`border-b border-border align-top ${l.estado === "en_crm" ? "opacity-50" : ""}`}>
-      <td className="px-2 py-2.5">
-        <input type="checkbox" checked={elegido} disabled={l.estado === "en_crm"} onChange={onToggle} className="accent-[var(--accent)]" />
-      </td>
-      <td className="px-2 py-2.5">
-        <div className="font-semibold text-[12.5px] text-ink">{l.mapsUrl ? link(l.mapsUrl, l.empresa) : l.empresa}</div>
-        <div className="text-ink-faint text-[11px]">{[l.rubro, l.localidad].filter(Boolean).join(" · ")}</div>
-        {l.web && <div className="text-ink-faint text-[11px]">{link(l.web, l.web.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</div>}
-      </td>
-      <td className="px-2 py-2.5 text-ink-soft leading-relaxed">
-        {l.email && <div>✉ {link(`mailto:${l.email}`, l.email)}</div>}
-        {!l.email && l.emailGenerico && <div className="text-ink-faint">✉ {l.emailGenerico}</div>}
+    <div className={`grid grid-cols-1 md:grid-cols-[auto_minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.5fr)_auto] gap-x-4 gap-y-2 px-3.5 py-3 border-t border-border first:border-t-0 ${rayada ? "bg-surface-2/40" : ""} ${l.estado === "en_crm" ? "opacity-50" : ""}`}>
+      <input
+        type="checkbox" checked={elegido} disabled={l.estado === "en_crm"} onChange={onToggle}
+        className="accent-[var(--accent)] mt-1 justify-self-start"
+        aria-label={`Elegir ${l.empresa}`}
+      />
+
+      <div className="min-w-0">
+        <div className="font-semibold text-[13px] text-ink break-words">
+          {l.mapsUrl ? link(l.mapsUrl, l.empresa) : l.empresa}
+          {l.score != null && (
+            <span className={`ml-2 font-display font-black text-[13px] align-middle ${l.score >= 7 ? "text-accent" : l.score >= 5 ? "text-ink-soft" : "text-ink-faint"}`}>
+              {l.score}
+            </span>
+          )}
+        </div>
+        <div className="text-ink-faint text-[11.5px]">{[l.rubro, l.localidad].filter(Boolean).join(" · ")}</div>
+        {l.direccion && <div className="text-ink-faint text-[11px] break-words">{l.direccion}</div>}
+        {l.web && <div className="text-[11px] text-ink-faint">{link(l.web, l.web.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</div>}
+      </div>
+
+      <div className="min-w-0 flex flex-col gap-0.5 text-[12px] text-ink-soft tabular-nums">
+        {l.email && <div className="break-words">✉ {link(`mailto:${l.email}`, l.email)}</div>}
+        {l.emailGenerico && <div className="text-ink-faint break-words">✉ {link(`mailto:${l.emailGenerico}`, l.emailGenerico)}</div>}
         {l.whatsapp && (
           <div>
             ◍ {link(`https://wa.me/${l.whatsapp.replace(/\D/g, "")}`, l.whatsapp)}
-            {!l.whatsappConfirmado && <span className="text-ink-faint text-[10.5px]"> (probable)</span>}
+            {!l.whatsappConfirmado && <span className="text-ink-faint text-[10px] ml-1">a verificar</span>}
           </div>
         )}
-        {l.telefono && !l.whatsapp && <div className="text-ink-faint">☏ {l.telefono}</div>}
-      </td>
-      <td className="px-2 py-2.5">
+        {l.telefono && <div className="text-ink-faint">☏ <a href={`tel:${l.telefono.replace(/[^\d+]/g, "")}`} className="hover:text-accent">{l.telefono}</a></div>}
+        {!l.email && !l.emailGenerico && !l.whatsapp && !l.telefono && <span className="text-ink-faint">Sin contacto directo</span>}
+      </div>
+
+      <div className="min-w-0 text-[12px]">
         {l.estado === "investigando" ? <span className="text-ink-faint italic">Investigando…</span>
           : l.estado === "error" ? <span className="text-[#fca5a5] text-[11px]">{l.error}</span>
           : l.decisor ? (
@@ -526,32 +554,28 @@ function FilaLead({ l, elegido, onToggle, onReintentar, onDescartar }: {
                   confianza {l.confianza}
                 </span>
               )}
+              {l.gancho && <div className="text-ink-soft text-[11.5px] leading-snug mt-1">{l.gancho}</div>}
             </>
-          ) : <span className="text-ink-faint">{l.score != null ? "No encontrado" : "—"}</span>}
-      </td>
-      <td className="px-2 py-2.5">
-        {l.score != null && (
-          <span className={`font-display font-black text-[15px] ${l.score >= 7 ? "text-accent" : l.score >= 5 ? "text-ink" : "text-ink-faint"}`}>{l.score}</span>
-        )}
-      </td>
-      <td className="px-2 py-2.5 text-ink-soft leading-snug max-w-[340px]">
-        {l.gancho}
-        {l.motivo && <div className="text-ink-faint text-[11px] mt-1">{l.motivo}</div>}
-      </td>
-      <td className="px-2 py-2.5 text-right whitespace-nowrap">
+          ) : investigado ? <span className="text-ink-faint">Decisor no encontrado</span>
+          : <span className="text-ink-faint">Sin investigar</span>}
+      </div>
+
+      <div className="text-right whitespace-nowrap self-start">
         {l.estado === "en_crm" ? <span className="text-[10.5px] text-ink-faint">En CRM</span> : (
           <>
             {(l.estado === "error" || l.estado === "investigado") && <button onClick={onReintentar} title="Investigar de nuevo" className="text-ink-faint hover:text-ink px-1.5">↻</button>}
             <button onClick={onDescartar} title="Descartar" className="text-ink-faint hover:text-ink px-1.5">✕</button>
           </>
         )}
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }
 
 function PerfilForm({ perfil, onPerfil, onListo }: { perfil: PerfilProspeccion; onPerfil: (p: PerfilProspeccion) => void; onListo: () => void }) {
   const [copiado, setCopiado] = useState(false);
+  const [copiadoPrompt, setCopiadoPrompt] = useState(false);
+  const [verCampos, setVerCampos] = useState(false);
   const [pegado, setPegado] = useState("");
   const [leyendo, setLeyendo] = useState(false);
   const [faltan, setFaltan] = useState<string[]>([]);
@@ -596,18 +620,41 @@ function PerfilForm({ perfil, onPerfil, onListo }: { perfil: PerfilProspeccion; 
     </label>
   );
 
+  const resumen: [string, string][] = [
+    ["Oferta", perfil.oferta],
+    ["Rubros", perfil.rubros.join(", ")],
+    ["Zonas", perfil.zonas.join(", ")],
+    ["Decide", perfil.cargos.join(", ")],
+    ["Tamaño", perfil.tamano],
+    ["Señales de compra", perfil.senales],
+    ["Excluir", perfil.excluir],
+    ["No contactar", perfil.noContactar],
+    ["Competidores", perfil.competidores],
+    ["Si no contratan a nadie", perfil.alternativas],
+  ];
+  const cargado = resumen.some(([, v]) => v.trim());
+
   return (
     <div className="grid lg:grid-cols-[1fr_320px] gap-4 items-start">
       <div className="flex flex-col gap-4">
       <Card>
         <CardHeader
           title="Pegá lo que tengas y listo"
-          sub="Las respuestas del cliente, un mail, las notas de la reunión o lo que devolvió el proyecto de Claude. El agente lo lee y completa los campos de abajo; lo que no diga, queda vacío."
+          sub="Las respuestas del cliente, un mail, las notas de la reunión o lo que te devolvió el proyecto de Claude. El agente lo lee y arma el perfil solo. Lo que el texto no diga, queda vacío y te lo avisa."
+          right={
+            <button
+              onClick={() => { navigator.clipboard.writeText(PROMPT_PERFIL_PROYECTO).then(() => { setCopiadoPrompt(true); setTimeout(() => setCopiadoPrompt(false), 2000); }); }}
+              className={btnSecundario}
+              title="El prompt para pegar en el proyecto de Claude del cliente"
+            >
+              {copiadoPrompt ? "✓ Copiado" : "⧉ Prompt para el proyecto"}
+            </button>
+          }
         />
         <textarea
           value={pegado}
           onChange={(e) => setPegado(e.target.value)}
-          rows={5}
+          rows={10}
           placeholder={"Ej.: Vendemos limpieza de oficinas, abono desde $400.000. Les vendemos a estudios contables y jurídicos de 10 a 50 empleados en Palermo y Microcentro. Decide el socio o el gerente de administración. No nos sirven consultorios médicos. Competencia: Limpiolux, CleanOffice BA."}
           className={`${inputCls} leading-relaxed`}
         />
@@ -630,6 +677,37 @@ function PerfilForm({ perfil, onPerfil, onListo }: { perfil: PerfilProspeccion; 
         )}
       </Card>
 
+      {cargado && (
+        <Card>
+          <CardHeader
+            title="Perfil de la cuenta"
+            sub="Esto es con lo que va a buscar el agente. Revisalo antes de arrancar."
+            right={
+              <div className="flex gap-2">
+                <button onClick={() => setVerCampos((v) => !v)} className={btnSecundario}>
+                  {verCampos ? "Ocultar campos" : "✎ Editar a mano"}
+                </button>
+                <button onClick={onListo} disabled={!listo} className={btnPrimario}>Ir a buscar →</button>
+              </div>
+            }
+          />
+          <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5">
+            {resumen.filter(([, v]) => v.trim()).map(([k, v]) => (
+              <div key={k}>
+                <dt className="font-display font-extrabold uppercase text-[9.5px] tracking-wide text-ink-faint">{k}</dt>
+                <dd className="text-[12.5px] text-ink-soft m-0 whitespace-pre-line">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          {!listo && (
+            <p className="text-[12px] text-ink-faint mt-3 mb-0">
+              Para buscar faltan los tres imprescindibles: rubros, zonas y cargo que decide.
+            </p>
+          )}
+        </Card>
+      )}
+
+      {(verCampos || !cargado) && (
       <Card>
         <div className="grid md:grid-cols-2 gap-4">
           {campo("Qué vende la cuenta", "Una o dos líneas, con precio aproximado si lo hay.",
@@ -676,6 +754,7 @@ function PerfilForm({ perfil, onPerfil, onListo }: { perfil: PerfilProspeccion; 
           <button onClick={onListo} disabled={!listo} className={btnPrimario}>Listo, ir a buscar →</button>
         </div>
       </Card>
+      )}
       </div>
 
       <Card>

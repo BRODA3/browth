@@ -165,6 +165,40 @@ export function depurar(leads: Lead[], perfil: PerfilProspeccion, existentes: Le
   });
 }
 
+/* ---------------- Cómo de listo está cada lead ---------------- */
+
+export type GrupoContacto = "A" | "B" | "C" | "D" | "E" | "F";
+
+/**
+ * Agrupa por qué tan listo está el lead para que alguien lo contacte hoy. El
+ * orden alfabético no sirve para vender; este sí: arriba lo que se trabaja
+ * ahora, abajo lo que todavía necesita laburo a mano.
+ */
+export const GRUPOS_CONTACTO: { id: GrupoContacto; nombre: string; detalle: string }[] = [
+  { id: "A", nombre: "Email + WhatsApp", detalle: "Los dos canales abiertos. Empezar por acá." },
+  { id: "B", nombre: "Con email", detalle: "Casilla publicada en la web. Mail primero, teléfono después." },
+  { id: "C", nombre: "WhatsApp seguro", detalle: "El número lleva 15 o +549: es celular confirmado." },
+  { id: "D", nombre: "WhatsApp a verificar", detalle: "Celular deducido del prefijo. Confirmar antes de escribir." },
+  { id: "E", nombre: "Solo fijo", detalle: "Empieza en 4 o 5. Llamar, nunca mandar WhatsApp." },
+  { id: "F", nombre: "Sin contacto", detalle: "Solo dirección. Sirve para visita o para buscar la web a mano." },
+];
+
+export function grupoDe(l: Lead): GrupoContacto {
+  if (l.email && l.whatsapp) return "A";
+  if (l.email || l.emailGenerico) return "B";
+  if (l.whatsapp && l.whatsappConfirmado) return "C";
+  if (l.whatsapp) return "D";
+  if (l.telefono) return "E";
+  return "F";
+}
+
+/** Los leads repartidos en los grupos, sin los grupos vacíos. */
+export function porGrupo(leads: Lead[]): { grupo: (typeof GRUPOS_CONTACTO)[number]; leads: Lead[] }[] {
+  return GRUPOS_CONTACTO
+    .map((grupo) => ({ grupo, leads: leads.filter((l) => grupoDe(l) === grupo.id) }))
+    .filter((g) => g.leads.length > 0);
+}
+
 /* ---------------- Exportación ---------------- */
 
 const COLUMNAS: [string, (l: Lead) => string | number | null][] = [

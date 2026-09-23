@@ -54,6 +54,13 @@ const P = (p: Omit<Prompt, "id" | "actualizado">): Prompt => ({
   actualizado: "2026-09-22T00:00:00.000Z",
 });
 
+/** El prompt que se pega en el proyecto de Claude del cliente para que devuelva el perfil. */
+export const PROMPT_PERFIL_PROYECTO = `Necesito armar el perfil de prospección B2B de [CLIENTE] para nuestro agente de research.
+
+Revisá todo lo que hay en este proyecto (brief, identidad, ICP, propuesta, estrategia, casos, notas de reuniones) y devolveme un texto corrido con lo que ya sabemos: qué vende, a qué rubros le vende (en términos de búsqueda de Google Maps, no de marketing), en qué zonas de Buenos Aires, qué cargo decide la compra, tamaño de empresa, señales de compra, qué excluir, a quién no contactar, competidores directos y cómo lo resuelve un cliente que no contrata a nadie.
+
+No inventes: lo que no esté en el proyecto, decí que falta. Al final listame qué le tenemos que preguntar al cliente.`;
+
 export const SEED_PROMPTS: Prompt[] = [
   P({
     titulo: "Perfil de prospección desde el proyecto del cliente",
