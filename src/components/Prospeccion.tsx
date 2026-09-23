@@ -65,6 +65,7 @@ export default function Prospeccion({
   const [error, setError] = useState<string | null>(null);
   const [encontrados, setEncontrados] = useState(0);
   const [investigando, setInvestigando] = useState(false);
+  const [trayendo, setTrayendo] = useState(false);
   const [analizando, setAnalizando] = useState(false);
   const [minScore, setMinScore] = useState(0);
   const [elegidos, setElegidos] = useState<Set<string>>(new Set());
@@ -148,6 +149,32 @@ export default function Prospeccion({
       if (json.estado === "parcial") setError(json.error);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No pude recuperar esa búsqueda.");
+    }
+  }
+
+  /** Trae lo que el flujo de n8n fue dejando en la base durante la semana. */
+  async function traerDelServidor() {
+    setError(null);
+    setTrayendo(true);
+    try {
+      const res = await pedir(`/api/prospeccion/leads?cuenta=${encodeURIComponent(cuenta)}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "No pude traer los leads del servidor.");
+      if (!json.hayBase) {
+        setAviso("Todavía no hay base de datos conectada, así que no hay nada que traer. Se conecta desde Vercel → Storage.");
+        return;
+      }
+      const nuevos = depurar(json.leads as Lead[], perfil, leads);
+      if (!nuevos.length) {
+        setAviso(`No hay leads nuevos: los ${json.total} que hay en el servidor ya los tenés acá.`);
+        return;
+      }
+      onLeads((prev) => [...nuevos, ...prev]);
+      setAviso(`${nuevos.length} leads nuevos traídos del servidor.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No pude traer los leads del servidor.");
+    } finally {
+      setTrayendo(false);
     }
   }
 
@@ -348,6 +375,10 @@ export default function Prospeccion({
                 : `1) Buscá empresas con el perfil de la cuenta. 2) Investigá: el agente lee cada web y busca al decisor. 3) Pasá los mejores al CRM. · Próxima búsqueda: ${combinaciones} combinaciones, hasta ${maximo} empresas, unos US$ ${estimado.toFixed(2)} de Apify.`}
               right={
                 <div className="flex gap-2 flex-wrap justify-end">
+                  <button onClick={traerDelServidor} disabled={trayendo} className={btnSecundario}
+                    title="Trae lo que el flujo de n8n dejó en la base durante la semana">
+                    {trayendo ? "Trayendo…" : "↓ Traer de n8n"}
+                  </button>
                   <button onClick={() => buscar()} disabled={Boolean(busqueda)} className={btnPrimario}>
                     {busqueda ? "Buscando…" : "⌖ Buscar empresas"}
                   </button>

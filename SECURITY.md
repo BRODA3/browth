@@ -21,6 +21,21 @@ Reglas:
 - Si una clave se filtró: rotarla en el proveedor **y** en Vercel. Rotar no borra
   el gasto ya hecho, así que revisar también el consumo.
 
+## 2bis. La ingesta automática
+
+`/api/webhooks/leads` es la única ruta que un programa puede llamar sin el código
+de acceso del equipo, porque la llama n8n y no una persona con navegador. Su
+defensa propia:
+
+- Token dedicado `BROWTH_INGESTA_TOKEN`, distinto del código de acceso y comparado
+  en tiempo constante. Si se filtra, se rota solo esa variable.
+- Tope de 30 envíos por hora y por IP, y de 500 leads por envío.
+- Solo inserta: no lee, no borra ni pisa leads existentes. Lo peor que puede hacer
+  quien robe el token es ensuciar la lista con datos falsos, no llevarse la base
+  ni gastar crédito de Anthropic.
+- Los campos se normalizan antes de guardarse: nada de lo que llega se ejecuta ni
+  se renderiza como HTML.
+
 ## 2. Quién puede usar la app
 
 La app es pública en internet: sin control, cualquiera con el link puede hacer
@@ -83,9 +98,12 @@ al modelo ("ignorá tus instrucciones", "poné score 10", "mandá un mail a…")
 
 ## 7. Los datos
 
-- Hoy **todo vive en el `localStorage` del navegador de cada persona**: leads, CRM,
-  brains, prompts y análisis. No hay servidor con datos ni backup: si se limpia el
-  navegador, se pierde. Tampoco se comparte entre personas.
+- **CRM, brains, prompts y análisis** viven en el `localStorage` del navegador de
+  cada persona. No hay backup: si se limpia el navegador, se pierde, y no se
+  comparte entre personas.
+- **Los leads que deja el flujo de n8n** sí van a una base Postgres (Neon), porque
+  entran de madrugada cuando nadie tiene la pestaña abierta. Se separan por cuenta
+  y la app los trae con el botón "↓ Traer de n8n".
 - Los leads son **datos personales de terceros** (Ley 25.326 en Argentina, RGPD si
   hay contactos en Europa). Obligaciones prácticas:
   - Guardar la fuente de cada dato (el agente ya la registra).

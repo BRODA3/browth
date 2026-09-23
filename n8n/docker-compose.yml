@@ -1,0 +1,48 @@
+# Motor semanal de prospección: n8n orquesta, el scraper de Google Maps busca.
+# Los dos son open source y corren en tu máquina, así que buscar no cuesta plata.
+#
+#   docker compose up -d
+#   n8n      → http://localhost:5678
+#   scraper  → http://localhost:8080  (la API en /api/docs)
+#
+# Las claves salen del archivo .env que está al lado de este (ver .env.example).
+
+services:
+  scraper:
+    image: gosom/google-maps-scraper
+    container_name: browth-scraper
+    command: ["-web", "-addr", ":8080", "-data-folder", "/gmapsdata"]
+    volumes:
+      - scraper-datos:/gmapsdata
+      # La caché del navegador es pesada: si se pierde, el primer arranque
+      # vuelve a descargar Playwright entero.
+      - scraper-playwright:/opt
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: browth-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=America/Argentina/Buenos_Aires
+      - TZ=America/Argentina/Buenos_Aires
+      # Sin esto el flujo no puede leer las claves con {{ $env.LO_QUE_SEA }}.
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # Lo que el flujo necesita saber. Se definen en el .env de al lado.
+      - BROWTH_URL=${BROWTH_URL}
+      - BROWTH_INGESTA_TOKEN=${BROWTH_INGESTA_TOKEN}
+      - BROWTH_ACCESS_CODE=${BROWTH_ACCESS_CODE}
+      - SCRAPER_URL=http://scraper:8080
+    volumes:
+      - n8n-datos:/home/node/.n8n
+    depends_on:
+      - scraper
+    restart: unless-stopped
+
+volumes:
+  scraper-datos:
+  scraper-playwright:
+  n8n-datos:

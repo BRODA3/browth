@@ -1,0 +1,173 @@
+{
+  "name": "Prospección semanal",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [1],
+              "triggerAtHour": 7,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Todos los lunes 7:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-620, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Perfil de la cuenta. Es lo único que se toca para cambiar a quién buscar.\nconst CUENTA = 'DESPA TRANSPORTES';\n\nconst RUBROS = [\n  'metalúrgica',\n  'fábrica de plásticos',\n  'fábrica de muebles',\n  'imprenta industrial',\n  'distribuidora mayorista',\n  'importadora',\n  'ferretería industrial',\n  'corralón',\n  'equipamiento gastronómico',\n  'tienda de bebés',\n  'juguetería mayorista',\n  'decoración del hogar',\n  'distribuidora textil',\n  'mayorista de telas',\n];\n\nconst ZONAS = [\n  'Villa Crespo, Buenos Aires',\n  'Barracas, Buenos Aires',\n  'Parque Patricios, Buenos Aires',\n  'Flores, Buenos Aires',\n  'Villa Devoto, Buenos Aires',\n  'Avellaneda, Buenos Aires',\n  'San Martín, Buenos Aires',\n  'Tres de Febrero, Buenos Aires',\n];\n\n// Cuántas búsquedas por semana. Cada una tarda unos minutos, así que conviene\n// ir de a poco: el flujo rota solo y en unas semanas cubre todo el mapa.\nconst POR_SEMANA = 12;\nconst PROFUNDIDAD = 2; // cuántas pantallas de resultados baja en cada búsqueda\n\n// Todas las combinaciones rubro × zona, en orden fijo.\nconst todas = [];\nfor (const r of RUBROS) for (const z of ZONAS) todas.push(`${r} en ${z}`);\n\n// Rotación semanal: la semana 1 toma las primeras 12, la 2 las 12 siguientes,\n// y cuando da la vuelta vuelve a empezar. Así no repite lo mismo cada lunes.\nconst inicioDeAno = new Date(new Date().getFullYear(), 0, 1);\nconst semana = Math.floor((Date.now() - inicioDeAno) / (7 * 24 * 60 * 60 * 1000));\nconst vueltas = Math.ceil(todas.length / POR_SEMANA);\nconst desde = (semana % vueltas) * POR_SEMANA;\nconst keywords = todas.slice(desde, desde + POR_SEMANA);\n\nreturn [{\n  json: {\n    cuenta: CUENTA,\n    keywords,\n    profundidad: PROFUNDIDAD,\n    tanda: `${desde + 1}-${desde + keywords.length} de ${todas.length}`,\n  },\n}];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Perfil y búsquedas de la semana",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SCRAPER_URL }}/api/v1/jobs",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: 'Browth ' + $json.cuenta + ' ' + $now.toFormat('yyyy-LL-dd'), keywords: $json.keywords, lang: 'es', depth: $json.profundidad, email: true, max_time: 1800 }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Crear el trabajo en el scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-180, 0]
+    },
+    {
+      "parameters": {
+        "amount": 32,
+        "unit": "minutes"
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Esperar a que termine",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [40, 0],
+      "webhookId": "b2000000-0000-4000-8000-000000000004"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SCRAPER_URL }}/api/v1/jobs/{{ $('Crear el trabajo en el scraper').item.json.id }}/download",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Descargar el CSV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "// El CSV del scraper trae 36 columnas; a Browth le mandamos las que usa.\n// El resto (horarios, reseñas, fotos) no aporta a una lista de contacto.\nfunction parseCsv(t) {\n  t = String(t || '').replace(/^\\uFEFF/, '');\n  const filas = [];\n  let fila = [], celda = '', comillas = false;\n  for (let i = 0; i < t.length; i++) {\n    const c = t[i];\n    if (comillas) {\n      if (c === '\"') { if (t[i + 1] === '\"') { celda += '\"'; i++; } else comillas = false; }\n      else celda += c;\n    } else if (c === '\"') comillas = true;\n    else if (c === ',') { fila.push(celda); celda = ''; }\n    else if (c === '\\n') { fila.push(celda); filas.push(fila); fila = []; celda = ''; }\n    else if (c !== '\\r') celda += c;\n  }\n  if (celda || fila.length) { fila.push(celda); filas.push(fila); }\n  return filas;\n}\n\nconst crudo = $input.first().json.data ?? $input.first().json.body ?? '';\nconst filas = parseCsv(crudo);\nif (filas.length < 2) throw new Error('El CSV vino vacío: revisá el job en el scraper.');\n\nconst cab = filas[0];\nconst col = (n) => cab.indexOf(n);\nconst I = {\n  title: col('title'), category: col('category'), address: col('address'),\n  completa: col('complete_address'), website: col('website'), phone: col('phone'),\n  emails: col('emails'), link: col('link'),\n  rating: col('review_rating'), resenas: col('review_count'), estado: col('status'),\n};\n\nconst cuenta = $('Perfil y búsquedas de la semana').first().json.cuenta;\n\nreturn filas.slice(1)\n  .filter((f) => f.length > 3 && f[I.title])\n  // Los locales cerrados no sirven para prospectar.\n  .filter((f) => !/permanently_closed|closed_permanently/i.test(f[I.estado] || ''))\n  .map((f) => ({\n    json: {\n      cuenta,\n      title: f[I.title],\n      category: f[I.category] || '',\n      address: f[I.address] || '',\n      complete_address: f[I.completa] || '',\n      website: f[I.website] || '',\n      phone: f[I.phone] || '',\n      emails: f[I.emails] || '',\n      link: f[I.link] || '',\n      review_rating: f[I.rating] || '',\n      review_count: f[I.resenas] || '',\n    },\n  }));"
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "CSV a leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 200,
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "De a 200",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [700, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BROWTH_URL }}/api/webhooks/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-browth-ingesta",
+              "value": "={{ $env.BROWTH_INGESTA_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ cuenta: $json.cuenta, origen: 'n8n', leads: $input.all().map(i => i.json) }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Mandar a Browth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 120],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resumen de la corrida, para ver de un vistazo si sirvió.\nconst tandas = $input.all().map((i) => i.json);\nconst suma = (campo) => tandas.reduce((t, x) => t + (Number(x[campo]) || 0), 0);\n\nreturn [{\n  json: {\n    cuenta: $('Perfil y búsquedas de la semana').first().json.cuenta,\n    busquedas: $('Perfil y búsquedas de la semana').first().json.tanda,\n    recibidos: suma('recibidos'),\n    nuevos: suma('nuevos'),\n    repetidos: suma('repetidos'),\n    cuando: $now.toFormat('yyyy-LL-dd HH:mm'),\n  },\n}];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000009",
+      "name": "Resumen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, -120]
+    }
+  ],
+  "connections": {
+    "Todos los lunes 7:00": {
+      "main": [[{ "node": "Perfil y búsquedas de la semana", "type": "main", "index": 0 }]]
+    },
+    "Perfil y búsquedas de la semana": {
+      "main": [[{ "node": "Crear el trabajo en el scraper", "type": "main", "index": 0 }]]
+    },
+    "Crear el trabajo en el scraper": {
+      "main": [[{ "node": "Esperar a que termine", "type": "main", "index": 0 }]]
+    },
+    "Esperar a que termine": {
+      "main": [[{ "node": "Descargar el CSV", "type": "main", "index": 0 }]]
+    },
+    "Descargar el CSV": {
+      "main": [[{ "node": "CSV a leads", "type": "main", "index": 0 }]]
+    },
+    "CSV a leads": {
+      "main": [[{ "node": "De a 200", "type": "main", "index": 0 }]]
+    },
+    "De a 200": {
+      "main": [
+        [{ "node": "Resumen", "type": "main", "index": 0 }],
+        [{ "node": "Mandar a Browth", "type": "main", "index": 0 }]
+      ]
+    },
+    "Mandar a Browth": {
+      "main": [[{ "node": "De a 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Argentina/Buenos_Aires"
+  },
+  "pinData": {}
+}
