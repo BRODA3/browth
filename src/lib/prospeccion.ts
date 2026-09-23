@@ -138,6 +138,27 @@ export function separarEmails(emails: string[], web: string): { email: string; e
   return { email: corporativo, emailGenerico: limpios.find((e) => GENERICOS.test(e)) ?? "" };
 }
 
+/**
+ * Clave de último recurso para no repetir un lead. Muchísimas fichas de Google
+ * Maps no tienen ni web ni teléfono —talleres, locales de galería—, así que sin
+ * esto el flujo semanal las volvería a cargar cada lunes. Mismo nombre y misma
+ * dirección es el mismo negocio; dos sucursales quedan distintas porque cambia
+ * la dirección.
+ */
+export function claveTexto(empresa: string, direccion: string): string {
+  const limpiar = (s: string) =>
+    s.toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const nombre = limpiar(empresa);
+  if (!nombre) return "";
+  // Solo la calle y la altura: el resto de la dirección de Maps es ruido
+  // (código postal, ciudad, país) y cambia de una corrida a otra.
+  const calle = limpiar(direccion.split(",")[0] ?? "");
+  return `${nombre}|${calle}`;
+}
+
 export function dominioDe(url: string): string {
   try {
     return new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(/^www\./, "");

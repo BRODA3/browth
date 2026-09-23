@@ -19,10 +19,17 @@ export const hayBase = () => Boolean(process.env.DATABASE_URL);
  * El driver tipa el resultado con su propia clase de arreglo. Nosotros siempre
  * queremos la forma simple —filas— así que lo estrechamos acá y no en cada ruta.
  */
-type Consulta = <T = Record<string, unknown>>(
+type Consulta = (<T = Record<string, unknown>>(
   plantilla: TemplateStringsArray,
   ...valores: unknown[]
-) => Promise<T[]>;
+) => Promise<T[]>) & {
+  /**
+   * Envuelve un objeto para guardarlo en una columna jsonb. Hace falta: el
+   * driver serializa solo, así que pasarle un texto ya serializado lo guarda
+   * como una cadena JSON en vez de como objeto, y después se lee vacío.
+   */
+  json: (valor: unknown) => unknown;
+};
 
 // Inicialización perezosa: conectar explota sin DATABASE_URL, y el módulo se
 // evalúa durante el build, cuando la variable todavía puede no existir.
@@ -71,6 +78,7 @@ async function crear() {
       localidad     TEXT NOT NULL DEFAULT '',
       telefono      TEXT NOT NULL DEFAULT '',
       telefono_clave TEXT NOT NULL DEFAULT '',
+      clave_texto   TEXT NOT NULL DEFAULT '',
       datos         JSONB NOT NULL,
       origen        TEXT NOT NULL DEFAULT 'app',
       creado        TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -81,8 +89,13 @@ async function crear() {
   // ocho dígitos del teléfono dentro de la misma cuenta. Los índices son
   // parciales porque muchísimas fichas de Maps no tienen web ni teléfono y
   // ahí el vacío no significa "es el mismo".
+  // Para bases creadas antes de que existiera la tercera clave.
+  await q`ALTER TABLE leads ADD COLUMN IF NOT EXISTS clave_texto TEXT NOT NULL DEFAULT ''`;
+
   await q`CREATE UNIQUE INDEX IF NOT EXISTS leads_dominio ON leads (cuenta, dominio) WHERE dominio <> ''`;
   await q`CREATE UNIQUE INDEX IF NOT EXISTS leads_telefono ON leads (cuenta, telefono_clave) WHERE telefono_clave <> ''`;
+  // La red de seguridad: nombre + calle, para las fichas sin web ni teléfono.
+  await q`CREATE UNIQUE INDEX IF NOT EXISTS leads_texto ON leads (cuenta, clave_texto) WHERE clave_texto <> ''`;
   await q`CREATE INDEX IF NOT EXISTS leads_cuenta ON leads (cuenta, creado DESC)`;
 
   await q`

@@ -38,6 +38,16 @@ docker compose up -d
 
 Son tres: **Postgres** (la base), **el scraper** y **n8n**.
 
+> **¿Ya tenés un n8n andando?** Entonces el de acá no arranca: el puerto 5678
+> está ocupado, y está bien. Usá el tuyo y conectá el scraper a su red para que
+> pueda llamarlo por nombre:
+>
+> ```bash
+> docker network connect <red-de-tu-n8n> browth-scraper
+> ```
+>
+> Para saber cuál es: `docker inspect <tu-n8n> --format '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}'`
+
 - n8n → http://localhost:5678
 - scraper → http://localhost:8080 (la API se documenta sola en `/api/docs`)
 - Postgres → `postgres://browth:browth@localhost:5432/browth`
@@ -59,12 +69,28 @@ El token tiene que ser **idéntico** en los dos archivos, o la ingesta devuelve
 
 Después `npm run dev`.
 
-### 3. Importar el flujo
+### 3. La credencial del token
+
+El token no viaja en el archivo del workflow: vive cifrado en n8n. Una sola vez:
+
+**Credentials → Add credential → Header Auth**
+
+| Campo | Valor |
+|---|---|
+| Name | `Browth ingesta` |
+| Header Name | `x-browth-ingesta` |
+| Header Value | el `BROWTH_INGESTA_TOKEN` de `n8n/.env` |
+
+### 4. Importar el flujo
 
 En n8n: **Workflows → ⋯ → Import from File** → `prospeccion-semanal.json`.
-Después abrí el nodo **«Perfil y búsquedas de la semana»** y cambiá `CUENTA`,
-`RUBROS` y `ZONAS` por los del cliente. Activá el workflow con el interruptor
-de arriba a la derecha.
+
+Abrí el nodo **«Mandar a Browth»** y elegí la credencial *Browth ingesta* en el
+desplegable (al importar queda sin asignar, es normal). Después, en el nodo
+**«Perfil y búsquedas de la semana»**, cambiá `CUENTA`, `RUBROS` y `ZONAS` por
+los del cliente, y `SCRAPER_URL` / `BROWTH_URL` si tu setup es distinto.
+
+Activá el workflow con el interruptor de arriba a la derecha.
 
 Para probarlo sin esperar al lunes: **Execute Workflow**. Bajá `POR_SEMANA` a
 2 y el nodo «Esperar a que termine» a 5 minutos mientras probás.

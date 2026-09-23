@@ -7,7 +7,9 @@
           "interval": [
             {
               "field": "weeks",
-              "triggerAtDay": [1],
+              "triggerAtDay": [
+                1
+              ],
               "triggerAtHour": 7,
               "triggerAtMinute": 0
             }
@@ -18,22 +20,28 @@
       "name": "Todos los lunes 7:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-620, 0]
+      "position": [
+        -620,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Perfil de la cuenta. Es lo único que se toca para cambiar a quién buscar.\nconst CUENTA = 'DESPA TRANSPORTES';\n\nconst RUBROS = [\n  'metalúrgica',\n  'fábrica de plásticos',\n  'fábrica de muebles',\n  'imprenta industrial',\n  'distribuidora mayorista',\n  'importadora',\n  'ferretería industrial',\n  'corralón',\n  'equipamiento gastronómico',\n  'tienda de bebés',\n  'juguetería mayorista',\n  'decoración del hogar',\n  'distribuidora textil',\n  'mayorista de telas',\n];\n\nconst ZONAS = [\n  'Villa Crespo, Buenos Aires',\n  'Barracas, Buenos Aires',\n  'Parque Patricios, Buenos Aires',\n  'Flores, Buenos Aires',\n  'Villa Devoto, Buenos Aires',\n  'Avellaneda, Buenos Aires',\n  'San Martín, Buenos Aires',\n  'Tres de Febrero, Buenos Aires',\n];\n\n// Cuántas búsquedas por semana. Cada una tarda unos minutos, así que conviene\n// ir de a poco: el flujo rota solo y en unas semanas cubre todo el mapa.\nconst POR_SEMANA = 12;\nconst PROFUNDIDAD = 2; // cuántas pantallas de resultados baja en cada búsqueda\n\n// Todas las combinaciones rubro × zona, en orden fijo.\nconst todas = [];\nfor (const r of RUBROS) for (const z of ZONAS) todas.push(`${r} en ${z}`);\n\n// Rotación semanal: la semana 1 toma las primeras 12, la 2 las 12 siguientes,\n// y cuando da la vuelta vuelve a empezar. Así no repite lo mismo cada lunes.\nconst inicioDeAno = new Date(new Date().getFullYear(), 0, 1);\nconst semana = Math.floor((Date.now() - inicioDeAno) / (7 * 24 * 60 * 60 * 1000));\nconst vueltas = Math.ceil(todas.length / POR_SEMANA);\nconst desde = (semana % vueltas) * POR_SEMANA;\nconst keywords = todas.slice(desde, desde + POR_SEMANA);\n\nreturn [{\n  json: {\n    cuenta: CUENTA,\n    keywords,\n    profundidad: PROFUNDIDAD,\n    tanda: `${desde + 1}-${desde + keywords.length} de ${todas.length}`,\n  },\n}];"
+        "jsCode": "// Perfil de la cuenta. Es lo único que se toca para cambiar a quién buscar.\nconst CUENTA = 'DESPA TRANSPORTES';\n\n// Dónde vive cada cosa. En el mismo Docker que n8n el scraper se llama por su\n// nombre de contenedor; Browth corre afuera, en tu máquina, y desde adentro de\n// un contenedor eso es host.docker.internal.\nconst SCRAPER_URL = 'http://browth-scraper:8080';\nconst BROWTH_URL = 'http://host.docker.internal:3000';\n\nconst RUBROS = [\n  'metalúrgica',\n  'fábrica de plásticos',\n  'fábrica de muebles',\n  'imprenta industrial',\n  'distribuidora mayorista',\n  'importadora',\n  'ferretería industrial',\n  'corralón',\n  'equipamiento gastronómico',\n  'tienda de bebés',\n  'juguetería mayorista',\n  'decoración del hogar',\n  'distribuidora textil',\n  'mayorista de telas',\n];\n\nconst ZONAS = [\n  'Villa Crespo, Buenos Aires',\n  'Barracas, Buenos Aires',\n  'Parque Patricios, Buenos Aires',\n  'Flores, Buenos Aires',\n  'Villa Devoto, Buenos Aires',\n  'Avellaneda, Buenos Aires',\n  'San Martín, Buenos Aires',\n  'Tres de Febrero, Buenos Aires',\n];\n\n// Cuántas búsquedas por semana. Cada una tarda unos minutos, así que conviene\n// ir de a poco: el flujo rota solo y en unas semanas cubre todo el mapa.\nconst POR_SEMANA = 12;\nconst PROFUNDIDAD = 2; // cuántas pantallas de resultados baja en cada búsqueda\n\n// Todas las combinaciones rubro × zona, en orden fijo.\nconst todas = [];\nfor (const r of RUBROS) for (const z of ZONAS) todas.push(`${r} en ${z}`);\n\n// Rotación semanal: la semana 1 toma las primeras 12, la 2 las 12 siguientes,\n// y cuando da la vuelta vuelve a empezar. Así no repite lo mismo cada lunes.\nconst inicioDeAno = new Date(new Date().getFullYear(), 0, 1);\nconst semana = Math.floor((Date.now() - inicioDeAno) / (7 * 24 * 60 * 60 * 1000));\nconst vueltas = Math.ceil(todas.length / POR_SEMANA);\nconst desde = (semana % vueltas) * POR_SEMANA;\nconst keywords = todas.slice(desde, desde + POR_SEMANA);\n\nreturn [{\n  json: {\n    cuenta: CUENTA,\n    scraperUrl: SCRAPER_URL,\n    browthUrl: BROWTH_URL,\n    keywords,\n    profundidad: PROFUNDIDAD,\n    tanda: `${desde + 1}-${desde + keywords.length} de ${todas.length}`,\n  },\n}];"
       },
       "id": "a1000000-0000-4000-8000-000000000002",
       "name": "Perfil y búsquedas de la semana",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-400, 0]
+      "position": [
+        -400,
+        0
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SCRAPER_URL }}/api/v1/jobs",
+        "url": "={{ $json.scraperUrl }}/api/v1/jobs",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ name: 'Browth ' + $json.cuenta + ' ' + $now.toFormat('yyyy-LL-dd'), keywords: $json.keywords, lang: 'es', depth: $json.profundidad, email: true, max_time: 1800 }) }}",
@@ -43,7 +51,10 @@
       "name": "Crear el trabajo en el scraper",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 0]
+      "position": [
+        -180,
+        0
+      ]
     },
     {
       "parameters": {
@@ -54,12 +65,15 @@
       "name": "Esperar a que termine",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [40, 0],
+      "position": [
+        40,
+        0
+      ],
       "webhookId": "b2000000-0000-4000-8000-000000000004"
     },
     {
       "parameters": {
-        "url": "={{ $env.SCRAPER_URL }}/api/v1/jobs/{{ $('Crear el trabajo en el scraper').item.json.id }}/download",
+        "url": "={{ $('Perfil y búsquedas de la semana').first().json.scraperUrl }}/api/v1/jobs/{{ $('Crear el trabajo en el scraper').first().json.id }}/download",
         "options": {
           "response": {
             "response": {
@@ -72,7 +86,10 @@
       "name": "Descargar el CSV",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [260, 0],
+      "position": [
+        260,
+        0
+      ],
       "retryOnFail": true,
       "maxTries": 5,
       "waitBetweenTries": 5000
@@ -85,7 +102,10 @@
       "name": "CSV a leads",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -96,34 +116,39 @@
       "name": "De a 200",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [700, 0]
+      "position": [
+        700,
+        0
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.BROWTH_URL }}/api/webhooks/leads",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-browth-ingesta",
-              "value": "={{ $env.BROWTH_INGESTA_TOKEN }}"
-            }
-          ]
-        },
+        "url": "={{ $('Perfil y búsquedas de la semana').first().json.browthUrl }}/api/webhooks/leads",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ cuenta: $json.cuenta, origen: 'n8n', leads: $input.all().map(i => i.json) }) }}",
-        "options": {}
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "a1000000-0000-4000-8000-000000000008",
       "name": "Mandar a Browth",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [920, 120],
+      "position": [
+        920,
+        120
+      ],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "browth-ingesta",
+          "name": "Browth ingesta"
+        }
+      }
     },
     {
       "parameters": {
@@ -133,36 +158,107 @@
       "name": "Resumen",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, -120]
+      "position": [
+        920,
+        -120
+      ]
     }
   ],
   "connections": {
     "Todos los lunes 7:00": {
-      "main": [[{ "node": "Perfil y búsquedas de la semana", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Perfil y búsquedas de la semana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Perfil y búsquedas de la semana": {
-      "main": [[{ "node": "Crear el trabajo en el scraper", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Crear el trabajo en el scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Crear el trabajo en el scraper": {
-      "main": [[{ "node": "Esperar a que termine", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Esperar a que termine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Esperar a que termine": {
-      "main": [[{ "node": "Descargar el CSV", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Descargar el CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Descargar el CSV": {
-      "main": [[{ "node": "CSV a leads", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "CSV a leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "CSV a leads": {
-      "main": [[{ "node": "De a 200", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "De a 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "De a 200": {
       "main": [
-        [{ "node": "Resumen", "type": "main", "index": 0 }],
-        [{ "node": "Mandar a Browth", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mandar a Browth",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Mandar a Browth": {
-      "main": [[{ "node": "De a 200", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "De a 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {

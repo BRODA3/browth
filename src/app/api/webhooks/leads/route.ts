@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hayBase, prepararBase, sql } from "@/lib/db";
 import { limitar } from "@/lib/limite";
-import { dominioDe, nuevoLead, separarEmails, whatsappDe, type Lead } from "@/lib/prospeccion";
+import { claveTexto, dominioDe, nuevoLead, separarEmails, whatsappDe, type Lead } from "@/lib/prospeccion";
 
 // Puerta de entrada de la prospección automática. Un flujo de n8n corre el
 // scraper todas las semanas y deja acá lo que encontró; la app lo lee después.
@@ -132,18 +132,20 @@ export async function POST(req: NextRequest) {
   for (const l of leads) {
     const dominio = dominioDe(l.web);
     const telefonoClave = l.telefono.replace(/\D/g, "").slice(-8);
+    const claveTxt = claveTexto(l.empresa, l.direccion);
     // ON CONFLICT no sirve acá: hay dos índices únicos distintos y sólo se
     // puede nombrar uno por sentencia. Se resuelve con una inserción que no
     // pisa nada si ya existe cualquiera de las dos claves.
     const insertadas = await q`
-      INSERT INTO leads (id, cuenta, empresa, rubro, web, dominio, direccion, localidad, telefono, telefono_clave, datos, origen)
+      INSERT INTO leads (id, cuenta, empresa, rubro, web, dominio, direccion, localidad, telefono, telefono_clave, clave_texto, datos, origen)
       SELECT ${l.id}, ${cuenta}, ${l.empresa}, ${l.rubro}, ${l.web}, ${dominio}, ${l.direccion},
-             ${l.localidad}, ${l.telefono}, ${telefonoClave}, ${JSON.stringify(l)}::jsonb, ${origen}
+             ${l.localidad}, ${l.telefono}, ${telefonoClave}, ${claveTxt}, ${q.json(l)}, ${origen}
       WHERE NOT EXISTS (
         SELECT 1 FROM leads e
         WHERE e.cuenta = ${cuenta}
           AND ((${dominio} <> '' AND e.dominio = ${dominio})
-            OR (${telefonoClave} <> '' AND e.telefono_clave = ${telefonoClave}))
+            OR (${telefonoClave} <> '' AND e.telefono_clave = ${telefonoClave})
+            OR (${claveTxt} <> '' AND e.clave_texto = ${claveTxt}))
       )
       RETURNING id`;
     if (insertadas.length) nuevos++;
