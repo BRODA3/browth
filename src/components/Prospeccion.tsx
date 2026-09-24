@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, StatCard, Pill } from "./ui";
 import Markdown from "./Markdown";
 import {
-  CUESTIONARIO, ZONAS_SUGERIDAS, depurar, leadsACsv, perfilATexto, porGrupo,
+  CUESTIONARIO, ZONAS_SUGERIDAS, depurar, leadsACsv, nuevaTanda, perfilATexto, porGrupo, tandasDe,
   type AnalisisCompetencia, type Investigacion, type Lead, type PerfilProspeccion,
 } from "@/lib/prospeccion";
 import { PROMPT_PERFIL_PROYECTO } from "@/lib/prompts";
@@ -33,6 +33,7 @@ const CONCURRENCIA = 3;
 
 const lista = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
 const fmtFecha = (iso: string) => new Date(iso).toLocaleString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+const fmtDia = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
 
 const inputCls = "w-full border border-border-strong rounded-[var(--r-md)] bg-surface-2 text-ink px-3 py-2 text-[13px] outline-none focus:border-accent";
 const btnPrimario = "bg-accent text-accent-ink font-display font-extrabold uppercase text-[11px] px-4 py-2.5 rounded-[var(--r-md)] hover:bg-accent-dim transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
@@ -68,6 +69,7 @@ export default function Prospeccion({
   const [trayendo, setTrayendo] = useState(false);
   const [analizando, setAnalizando] = useState(false);
   const [minScore, setMinScore] = useState(0);
+  const [tandaVista, setTandaVista] = useState<string | null>(null);
   const [elegidos, setElegidos] = useState<Set<string>>(new Set());
   const [verAnalisis, setVerAnalisis] = useState<string | null>(null);
   const cortar = useRef(false);
@@ -79,7 +81,11 @@ export default function Prospeccion({
 
   const pendientes = leads.filter((l) => l.estado === "encontrado" || l.estado === "error");
   const investigados = leads.filter((l) => l.score != null);
-  const visibles = [...leads].filter((l) => l.estado !== "descartado" && (l.score ?? 10) >= minScore)
+
+  // Las listas guardadas, y la que se está mirando. Sin elegir ninguna se ven todas.
+  const tandas = tandasDe(leads);
+  const deLaTanda = tandaVista ? leads.filter((l) => (l.tanda || "Sin fecha") === tandaVista) : leads;
+  const visibles = deLaTanda.filter((l) => l.estado !== "descartado" && (l.score ?? 10) >= minScore)
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
 
   // Si se cortó una investigación a mitad de camino (recarga, cambio de vista), queda para retomar.
@@ -125,8 +131,10 @@ export default function Prospeccion({
   /** Suma al listado lo que trajo una corrida, sin repetidos ni excluidos. */
   function guardarLeads(nuevos: Lead[], costoUsd?: number | null) {
     let sumados = 0;
+    // Todo lo que entra junto queda en una misma lista, con su fecha.
+    const tanda = nuevaTanda("Búsqueda");
     onLeads((prev) => {
-      const limpios = depurar(nuevos, perfil, prev);
+      const limpios = depurar(nuevos, perfil, prev).map((l) => ({ ...l, tanda: l.tanda || tanda }));
       sumados = limpios.length;
       return [...prev, ...limpios];
     });
@@ -393,6 +401,30 @@ export default function Prospeccion({
               }
             />
 
+            {tandas.length > 0 && (
+              <div className="mb-4">
+                <div className="font-display font-extrabold uppercase text-[9.5px] tracking-wide text-ink-faint mb-1.5">
+                  Listas guardadas
+                </div>
+                <div className="border border-border rounded-[var(--r-md)] overflow-hidden max-w-[420px]">
+                  <FilaTanda
+                    titulo="Todas" detalle={`${tandas.length} ${tandas.length === 1 ? "lista" : "listas"}`}
+                    total={leads.length} activa={tandaVista === null} onClick={() => setTandaVista(null)}
+                  />
+                  {tandas.map((t) => (
+                    <FilaTanda
+                      key={t.id}
+                      titulo={t.id === "Sin fecha" ? "Sin fecha" : fmtDia(t.fecha)}
+                      detalle={t.id.split(" · ")[0]}
+                      total={t.total}
+                      activa={tandaVista === t.id}
+                      onClick={() => setTandaVista(tandaVista === t.id ? null : t.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {leads.length > 0 && (
               <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
                 <div className="flex items-center gap-2 text-[12px] text-ink-faint">
@@ -527,6 +559,29 @@ export default function Prospeccion({
         </Card>
       )}
     </div>
+  );
+}
+
+/** Una lista guardada: cuándo se hizo, de dónde salió y cuántas empresas trajo. */
+function FilaTanda({ titulo, detalle, total, activa, onClick }: {
+  titulo: string; detalle: string; total: number; activa: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={activa}
+      className={`w-full flex items-baseline justify-between gap-3 px-3.5 py-2.5 text-left border-t border-border first:border-t-0 transition-colors ${
+        activa ? "bg-accent/12" : "hover:bg-surface-2/60"
+      }`}
+    >
+      <span className="min-w-0">
+        <span className={`text-[13px] ${activa ? "text-ink font-semibold" : "text-ink-soft"}`}>{titulo}</span>
+        <span className="text-[11.5px] text-ink-faint ml-2">{detalle}</span>
+      </span>
+      <span className={`text-[12px] tabular-nums shrink-0 ${activa ? "text-accent font-semibold" : "text-ink-faint"}`}>
+        {total}
+      </span>
+    </button>
   );
 }
 

@@ -122,7 +122,10 @@ export async function POST(req: NextRequest) {
   }
 
   const origen = s(cuerpo?.origen) || "n8n";
-  const leads = filas.map(aLead).filter((l): l is Lead => l !== null);
+  // La tanda la manda el flujo para que sus varios envíos de 200 caigan en una
+  // sola lista. Si no viene, se arma con la fecha del día.
+  const tanda = s(cuerpo?.tanda) || `${origen} · ${new Date().toISOString().slice(0, 10)}`;
+  const leads = filas.map(aLead).filter((l): l is Lead => l !== null).map((l) => ({ ...l, tanda }));
 
   await prepararBase();
   const q = sql();

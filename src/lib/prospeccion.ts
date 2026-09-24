@@ -61,6 +61,12 @@ export interface Lead {
   estado: EstadoLead;
   error?: string;
   creado: string;
+  /**
+   * La lista a la que pertenece: una búsqueda es una tanda y queda guardada con
+   * su fecha. Sin esto los leads de meses distintos se apilan todos juntos y no
+   * se puede volver a una lista vieja.
+   */
+  tanda: string;
 }
 
 /** Lo que devuelve el agente al investigar un lead. */
@@ -92,7 +98,7 @@ export function nuevoLead(parcial: Partial<Lead>): Lead {
     whatsapp: "", whatsappConfirmado: false, email: "", emailGenerico: "", instagram: "", linkedinEmpresa: "",
     decisor: "", cargo: "", linkedinDecisor: "", confianza: "", fuenteDecisor: "",
     score: null, motivo: "", gancho: "", rating: null, resenas: null, mapsUrl: "",
-    estado: "encontrado", creado: new Date().toISOString(),
+    estado: "encontrado", creado: new Date().toISOString(), tanda: "",
     ...parcial,
   };
 }
@@ -213,6 +219,41 @@ export function grupoDe(l: Lead): GrupoContacto {
   return "F";
 }
 
+/* ---------------- Las listas guardadas ---------------- */
+
+export interface Tanda {
+  /** La etiqueta con la que se guardó, por ejemplo "n8n · 2026-09-23". */
+  id: string;
+  /** Fecha del lead más nuevo de la tanda. */
+  fecha: string;
+  total: number;
+}
+
+/**
+ * Cada búsqueda queda guardada como una lista con su fecha, de la más nueva a
+ * la más vieja. Lo que entró antes de que existieran las tandas cae en una sola
+ * lista "Sin fecha" en vez de desaparecer.
+ */
+export function tandasDe(leads: Lead[]): Tanda[] {
+  const mapa = new Map<string, Tanda>();
+  for (const l of leads) {
+    const id = l.tanda || "Sin fecha";
+    const previa = mapa.get(id);
+    if (previa) {
+      previa.total++;
+      if (l.creado > previa.fecha) previa.fecha = l.creado;
+    } else {
+      mapa.set(id, { id, fecha: l.creado, total: 1 });
+    }
+  }
+  return [...mapa.values()].sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+/** Etiqueta de tanda para una búsqueda hecha hoy. */
+export function nuevaTanda(origen: string): string {
+  return `${origen} · ${new Date().toISOString().slice(0, 10)}`;
+}
+
 /** Los leads repartidos en los grupos, sin los grupos vacíos. */
 export function porGrupo(leads: Lead[]): { grupo: (typeof GRUPOS_CONTACTO)[number]; leads: Lead[] }[] {
   return GRUPOS_CONTACTO
@@ -231,6 +272,7 @@ const COLUMNAS: [string, (l: Lead) => string | number | null][] = [
   ["Confianza decisor", (l) => l.confianza], ["Fuente decisor", (l) => l.fuenteDecisor],
   ["Score ICP (1-10)", (l) => l.score], ["Motivo score", (l) => l.motivo], ["Gancho personalizado", (l) => l.gancho],
   ["Instagram", (l) => l.instagram], ["Google Maps", (l) => l.mapsUrl], ["Estado", (l) => l.estado],
+  ["Lista", (l) => l.tanda],
 ];
 
 /** CSV listo para abrir en Google Sheets o Excel (UTF-8 con BOM). */
