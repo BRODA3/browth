@@ -12,6 +12,8 @@ documento dice qué está protegido, cómo, y qué queda en manos del equipo.
 | `APIFY_TOKEN` | Búsqueda de empresas en Google Maps | idem |
 | `BROWTH_ACCESS_CODE` | Código de acceso del equipo | idem |
 | `META_VERIFY_TOKEN`, `META_APP_SECRET` | Webhook de WhatsApp e Instagram | idem |
+| `BROWTH_INGESTA_TOKEN` | Llave con la que el flujo de n8n deja leads | idem, y `n8n/.env` |
+| `DATABASE_URL` | Base de datos de los leads | La inyecta Neon en Vercel; en desarrollo apunta al Postgres de Docker |
 
 Reglas:
 
@@ -20,21 +22,6 @@ Reglas:
 - `.env*` está en `.gitignore` (menos `.env.local.example`, que no tiene valores).
 - Si una clave se filtró: rotarla en el proveedor **y** en Vercel. Rotar no borra
   el gasto ya hecho, así que revisar también el consumo.
-
-## 2bis. La ingesta automática
-
-`/api/webhooks/leads` es la única ruta que un programa puede llamar sin el código
-de acceso del equipo, porque la llama n8n y no una persona con navegador. Su
-defensa propia:
-
-- Token dedicado `BROWTH_INGESTA_TOKEN`, distinto del código de acceso y comparado
-  en tiempo constante. Si se filtra, se rota solo esa variable.
-- Tope de 30 envíos por hora y por IP, y de 500 leads por envío.
-- Solo inserta: no lee, no borra ni pisa leads existentes. Lo peor que puede hacer
-  quien robe el token es ensuciar la lista con datos falsos, no llevarse la base
-  ni gastar crédito de Anthropic.
-- Los campos se normalizan antes de guardarse: nada de lo que llega se ejecuta ni
-  se renderiza como HTML.
 
 ## 2. Quién puede usar la app
 
@@ -52,6 +39,21 @@ trabajar a los agentes y gastar el crédito.
   valida su propia firma HMAC con `META_APP_SECRET`.
 
 Pendiente: no hay usuarios ni roles. Todo el que tiene el código ve todas las cuentas.
+
+## 2bis. La ingesta automática
+
+`/api/webhooks/leads` es la única ruta que un programa puede llamar sin el código
+de acceso del equipo, porque la llama n8n y no una persona con navegador. Su
+defensa propia:
+
+- Token dedicado `BROWTH_INGESTA_TOKEN`, distinto del código de acceso y comparado
+  en tiempo constante. Si se filtra, se rota solo esa variable.
+- Tope de 200 envíos por hora y por IP, y de 500 leads por envío. Es un freno para un bucle roto, no un racionamiento: con topes bajos un barrido grande pierde leads en silencio.
+- Solo inserta: no lee, no borra ni pisa leads existentes. Lo peor que puede hacer
+  quien robe el token es ensuciar la lista con datos falsos, no llevarse la base
+  ni gastar crédito de Anthropic.
+- Los campos se normalizan antes de guardarse: nada de lo que llega se ejecuta ni
+  se renderiza como HTML.
 
 ## 3. Tope de gasto
 

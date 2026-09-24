@@ -87,7 +87,11 @@ function aLead(f: Fila): Lead | null {
 }
 
 export async function POST(req: NextRequest) {
-  const tope = limitar(req, "inbox", 30, 60 * 60_000);
+  // 200 por hora: la ruta va protegida por token y solo inserta, así que el
+  // tope está para frenar un bucle roto, no para racionar. Un barrido grande
+  // manda una tanda de 200 leads por pedido, así que con 30 se quedaba corto y
+  // perdía leads en silencio.
+  const tope = limitar(req, "inbox", 200, 60 * 60_000);
   if (tope) return tope;
 
   const esperado = process.env.BROWTH_INGESTA_TOKEN;
